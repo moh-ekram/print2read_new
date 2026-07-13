@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { UserProfile, Post, CoinTransaction, UserRole } from "./types";
 import AuthModal from "./components/AuthModal";
+import { firebaseAuth, isFirebaseConfigured } from "./lib/firebase";
 import CoinsModal from "./components/CoinsModal";
 import ReaderPanel from "./components/ReaderPanel";
 import WriterPanel from "./components/WriterPanel";
@@ -49,6 +50,8 @@ export default function App() {
 
   // Active view tabs for profile
   const [profileView, setProfileView] = useState<"reader" | "writer" | "admin">("reader");
+  const [activeNavView, setActiveNavView] = useState<"home" | "profile" | "admin">("home");
+  const [profileSection, setProfileSection] = useState<"reader" | "writer">("reader");
   const [readerTab, setReaderTab] = useState<"bookmarks" | "basket" | "following">("bookmarks");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -57,11 +60,24 @@ export default function App() {
 
   // 1. Initial mounting and loading
   useEffect(() => {
-    // Let's seed "reader-1" as default logged in user so the preview is highly interactive immediately!
-    const defaultUid = "reader-1";
-    loadUserSession(defaultUid);
-    fetchPosts();
-    fetchAdminData();
+    if (isFirebaseConfigured && firebaseAuth) {
+      const unsubscribe = firebaseAuth.onAuthStateChanged((user) => {
+        if (user) {
+          loadUserSession(user.uid);
+        } else {
+          setCurrentUser(null);
+        }
+      });
+      fetchPosts();
+      fetchAdminData();
+      return () => unsubscribe();
+    } else {
+      // Sandbox mode: seed "reader-1" as default logged in user so the preview is highly interactive immediately!
+      const defaultUid = "reader-1";
+      loadUserSession(defaultUid);
+      fetchPosts();
+      fetchAdminData();
+    }
   }, []);
 
   const loadUserSession = async (uid: string) => {
@@ -71,6 +87,7 @@ export default function App() {
         const profile = await response.json();
         setCurrentUser(profile);
         setProfileView(profile.role);
+        setProfileSection(profile.role === "writer" ? "writer" : "reader");
         fetchTransactions(profile.uid);
       }
     } catch (e) {
@@ -121,11 +138,19 @@ export default function App() {
   const handleAuthSuccess = (profile: UserProfile) => {
     setCurrentUser(profile);
     setProfileView(profile.role);
+    setProfileSection(profile.role === "writer" ? "writer" : "reader");
     fetchTransactions(profile.uid);
     fetchAdminData();
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (isFirebaseConfigured && firebaseAuth) {
+      try {
+        await firebaseAuth.signOut();
+      } catch (e) {
+        console.error("Firebase sign out error", e);
+      }
+    }
     setCurrentUser(null);
   };
 
@@ -304,6 +329,7 @@ export default function App() {
   const authorMap = posts.reduce((acc: any, post) => {
     if (!acc[post.authorId]) {
       acc[post.authorId] = {
+        id: post.authorId,
         name: post.authorName,
         postCount: 0,
         totalViews: 0,
@@ -382,18 +408,16 @@ export default function App() {
 
           {/* Nav Items */}
           <button
-            onClick={() => {
-              setProfileView("reader");
-            }}
+            onClick={() => setActiveNavView("home")}
             className={`p-3.5 rounded-2xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 group ${
-              profileView === "reader"
-                ? "bg-violet-50 text-violet-600"
+              activeNavView === "home"
+                ? "bg-violet-50 text-violet-600 border border-violet-100"
                 : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
             }`}
-            title="রিডার ড্যাশবোর্ড"
+            title="হোমপেজ (Home)"
           >
-            <BookOpen className="w-5 h-5 group-hover:scale-115 transition-transform" />
-            <span className="text-[9px] font-bold">Reader</span>
+            <BookOpen className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span className="text-[9px] font-bold">Home</span>
           </button>
 
           <button
@@ -401,38 +425,34 @@ export default function App() {
               if (!currentUser) {
                 setIsAuthOpen(true);
               } else {
-                setProfileView("writer");
+                setActiveNavView("profile");
               }
             }}
             className={`p-3.5 rounded-2xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 group ${
-              profileView === "writer"
-                ? "bg-emerald-50 text-emerald-600"
+              activeNavView === "profile"
+                ? "bg-emerald-50 text-emerald-600 border border-emerald-105"
                 : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
             }`}
-            title="লেখক ড্যাশবোর্ড"
+            title="আমার প্রোফাইল (Profile)"
           >
-            <PenTool className="w-5 h-5 group-hover:scale-115 transition-transform" />
-            <span className="text-[9px] font-bold">Writer</span>
+            <User className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span className="text-[9px] font-bold">Profile</span>
           </button>
 
-          <button
-            onClick={() => {
-              if (!currentUser) {
-                setIsAuthOpen(true);
-              } else {
-                setProfileView("admin");
-              }
-            }}
-            className={`p-3.5 rounded-2xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 group ${
-              profileView === "admin"
-                ? "bg-orange-50 text-orange-600"
-                : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-            }`}
-            title="অ্যাডমিন প্যানেল"
-          >
-            <ShieldAlert className="w-5 h-5 group-hover:scale-115 transition-transform" />
-            <span className="text-[9px] font-bold">Admin</span>
-          </button>
+          {currentUser?.role === "admin" && (
+            <button
+              onClick={() => setActiveNavView("admin")}
+              className={`p-3.5 rounded-2xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 group ${
+                activeNavView === "admin"
+                  ? "bg-orange-50 text-orange-600 border border-orange-105"
+                  : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+              }`}
+              title="অ্যাডমিন প্যানেল"
+            >
+              <ShieldAlert className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-bold">Admin</span>
+            </button>
+          )}
         </aside>
 
         {/* Main Content viewport */}
@@ -440,14 +460,64 @@ export default function App() {
           {/* 2. PRIMARY NAVBAR */}
           <header className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 h-16 shrink-0 shadow-2xs">
             <div className="max-w-[1550px] mx-auto px-4 md:px-8 h-full flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="md:hidden bg-violet-600 p-2 rounded-xl text-white shadow-xs">
-                  <Printer className="w-5 h-5" />
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="md:hidden bg-violet-600 p-2 rounded-xl text-white shadow-xs">
+                    <Printer className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg md:text-xl font-serif font-bold text-slate-800 leading-none">Read-to-Print</h1>
+                    <p className="text-[10px] text-slate-400 font-medium tracking-wide mt-0.5">Where Literature Meets physical Print Layouts</p>
+                  </div>
                 </div>
-                <div>
-                  <h1 className="text-lg md:text-xl font-serif font-bold text-slate-800 leading-none">Read-to-Print</h1>
-                  <p className="text-[10px] text-slate-400 font-medium tracking-wide mt-0.5">Where Literature Meets physical Print Layouts</p>
-                </div>
+
+                {/* Central Horizontal Menu/Navigation */}
+                <nav className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl shadow-xs text-xs">
+                  <button
+                    id="nav-home-btn"
+                    onClick={() => setActiveNavView("home")}
+                    className={`px-4 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      activeNavView === "home"
+                        ? "bg-white text-violet-700 shadow-2xs"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-violet-500" />
+                    হোমপেজ (Home)
+                  </button>
+                  <button
+                    id="nav-profile-btn"
+                    onClick={() => {
+                      if (!currentUser) {
+                        setIsAuthOpen(true);
+                      } else {
+                        setActiveNavView("profile");
+                      }
+                    }}
+                    className={`px-4 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      activeNavView === "profile"
+                        ? "bg-white text-emerald-700 shadow-2xs"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5 text-emerald-600" />
+                    আমার প্রোফাইল (Profile)
+                  </button>
+                  {currentUser?.role === "admin" && (
+                    <button
+                      id="nav-admin-btn"
+                      onClick={() => setActiveNavView("admin")}
+                      className={`px-4 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        activeNavView === "admin"
+                          ? "bg-white text-orange-700 shadow-2xs"
+                          : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5 text-orange-500" />
+                      অ্যাডমিন
+                    </button>
+                  )}
+                </nav>
               </div>
 
               <div className="flex items-center gap-3">
@@ -515,372 +585,278 @@ export default function App() {
 
           {/* 4. MAIN LAYOUT GRID (HIGH DENSITY VIEW) */}
           <main className="max-w-[1550px] w-full mx-auto px-4 md:px-8 py-6 flex-1">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              
-              {/* LEFT / CENTER SECTION (col-span-8) */}
-              <section className="lg:col-span-8 flex flex-col gap-6">
+            {activeNavView === "home" ? (
+              /* --- HOMEPAGE VIEW: Shows Post feed & Side Rails only --- */
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
-                {/* 3 Interactive Mini Action Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Card 1: প্রিন্ট বাস্কেট */}
-                  <div 
-                    onClick={() => {
-                      if (!currentUser) {
-                        setIsAuthOpen(true);
-                      } else {
-                        setProfileView("reader");
-                        setReaderTab("basket");
-                      }
-                    }}
-                    className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs flex items-center justify-between cursor-pointer hover:border-emerald-500 hover:shadow-sm transition-all group"
-                  >
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">বাস্কেটে যুক্ত</p>
-                      <p className="text-xl font-bold font-mono text-slate-800 mt-1">
-                        {currentUser ? currentUser.printBasketPostIds.length : 0} টি লেখা
-                      </p>
-                    </div>
-                    <div className="bg-emerald-50 text-emerald-600 p-2.5 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
-                      <Printer className="w-5 h-5" />
-                    </div>
-                  </div>
-
-                  {/* Card 2: বুকমার্ক তালিকা */}
-                  <div 
-                    onClick={() => {
-                      if (!currentUser) {
-                        setIsAuthOpen(true);
-                      } else {
-                        setProfileView("reader");
-                        setReaderTab("bookmarks");
-                      }
-                    }}
-                    className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs flex items-center justify-between cursor-pointer hover:border-violet-500 hover:shadow-sm transition-all group"
-                  >
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">বুকমার্ক প্রবন্ধ</p>
-                      <p className="text-xl font-bold font-mono text-slate-800 mt-1">
-                        {currentUser ? currentUser.bookmarkedPostIds.length : 0} টি সংরক্ষিত
-                      </p>
-                    </div>
-                    <div className="bg-violet-50 text-violet-600 p-2.5 rounded-xl group-hover:bg-violet-500 group-hover:text-white transition-all duration-300">
-                      <BookMarked className="w-5 h-5" />
-                    </div>
-                  </div>
-
-                  {/* Card 3: অনুসরণকারী লেখক */}
-                  <div 
-                    onClick={() => {
-                      if (!currentUser) {
-                        setIsAuthOpen(true);
-                      } else {
-                        setProfileView("reader");
-                        setReaderTab("following");
-                      }
-                    }}
-                    className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs flex items-center justify-between cursor-pointer hover:border-orange-500 hover:shadow-sm transition-all group"
-                  >
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">ফলোয়িং লেখক</p>
-                      <p className="text-xl font-bold font-mono text-slate-800 mt-1">
-                        {currentUser ? currentUser.followingAuthors.length : 0} জন লেখক
-                      </p>
-                    </div>
-                    <div className="bg-orange-50 text-orange-500 p-2.5 rounded-xl group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">
-                      <User className="w-5 h-5" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Dashboard Control Panel Wrapper */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                  {/* Profile Card Header */}
-                  <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4.5 h-4.5 text-violet-600" />
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">আপনার প্রোফাইল ড্যাশবোর্ড</h2>
-                    </div>
-                    
-                    {currentUser && (
-                      <div className="flex bg-slate-200 p-1 rounded-xl text-[10px] font-bold">
-                        <button
-                          id="profile-toggle-reader"
-                          onClick={() => setProfileView("reader")}
-                          className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${profileView === "reader" ? "bg-white text-emerald-700 shadow-2xs" : "text-slate-500 hover:text-slate-850"}`}
-                        >
-                          Reader
-                        </button>
-                        <button
-                          id="profile-toggle-writer"
-                          onClick={() => setProfileView("writer")}
-                          className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${profileView === "writer" ? "bg-white text-orange-600 shadow-2xs" : "text-slate-500 hover:text-slate-850"}`}
-                        >
-                          Writer
-                        </button>
-                        <button
-                          id="profile-toggle-admin"
-                          onClick={() => setProfileView("admin")}
-                          className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${profileView === "admin" ? "bg-white text-violet-600 shadow-2xs" : "text-slate-500 hover:text-slate-850"}`}
-                        >
-                          Admin
-                        </button>
+                {/* Center Column: All writings feed */}
+                <section className="lg:col-span-8 flex flex-col gap-6">
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                      <div>
+                        <h3 className="text-lg font-serif font-bold text-slate-800">সকল প্রকাশিত লেখা (All Articles)</h3>
+                        <p className="text-xs text-slate-400 mt-1">পড়ুন, বুকমার্ক করুন অথবা আপনার প্রিন্ট বাস্কেটে যুক্ত করুন</p>
                       </div>
-                    )}
-                  </div>
+                      
+                      {/* Search bar */}
+                      <div className="relative w-full sm:w-72">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          id="search-writings-input"
+                          type="text"
+                          placeholder="লেখা বা লেখক অনুসন্ধান..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all text-slate-700"
+                        />
+                      </div>
+                    </div>
 
-                  {/* Panel body */}
-                  <div className="p-5">
-                    {currentUser ? (
-                      <>
-                        {profileView === "reader" && (
-                          <ReaderPanel
-                            profile={currentUser}
-                            posts={posts}
-                            authors={adminData.users.filter(u => u.role === "writer")}
-                            onAction={handleAction}
-                            onOpenCoinsModal={() => setIsCoinsOpen(true)}
-                            onOpenPost={handleOpenPostReader}
-                            activeTab={readerTab}
-                            onTabChange={setReaderTab}
-                          />
-                        )}
-
-                        {profileView === "writer" && (
-                          <WriterPanel
-                            profile={currentUser}
-                            posts={posts}
-                            onOpenPost={handleOpenPostReader}
-                            onPublishPost={handlePublishPost}
-                            onWithdrawRequest={handleWithdrawRequest}
-                          />
-                        )}
-
-                        {profileView === "admin" && (
-                          <AdminPanel
-                            profile={currentUser}
-                            adminData={adminData}
-                            onApproveWithdraw={handleApproveWithdraw}
-                            onRefreshAdminData={fetchAdminData}
-                          />
-                        )}
-                      </>
-                    ) : (
-                      <div className="text-center py-12 px-4">
-                        <div className="w-14 h-14 bg-violet-50 text-violet-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <LogIn className="w-6 h-6" />
+                    {loadingPosts ? (
+                      <div className="text-center py-16">
+                        <div className="w-8 h-8 border-3 border-slate-300 border-t-violet-600 rounded-full animate-spin mx-auto mb-2"></div>
+                        <p className="text-xs text-slate-400">লেখাগুলো লোড করা হচ্ছে...</p>
+                      </div>
+                    ) : filteredPosts.length === 0 ? (
+                      <div className="text-center py-16 text-slate-400">
+                        <div className="bg-slate-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <BookOpen className="w-6 h-6 text-slate-300" />
                         </div>
-                        <h3 className="text-sm font-bold text-slate-700">লগইন বা নিবন্ধন করুন</h3>
-                        <p className="text-xs text-slate-400 mt-2 max-w-sm mx-auto leading-relaxed">
-                          বুকমার্ক লিস্ট, কয়েন কেনা, প্রিন্ট বাস্কেটে অ্যাড করা এবং লেখক ড্যাশবোর্ড এক্সেস করতে দয়া করে আপনার অ্যাকাউন্ট খুলুন।
-                        </p>
-                        <button
-                          id="login-cta-body"
-                          onClick={() => setIsAuthOpen(true)}
-                          className="mt-4 py-2 px-5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-xs hover:shadow-md transition-all cursor-pointer"
-                        >
-                          এখনি সাইন-ইন করুন
-                        </button>
+                        <p className="text-xs font-medium">কোনো লেখা খুঁজে পাওয়া যায়নি।</p>
                       </div>
-                    )}
-                  </div>
-                </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {filteredPosts.map((post) => {
+                          const isBookmarked = currentUser?.bookmarkedPostIds.includes(post.id) || false;
+                          const isAdded = currentUser?.printBasketPostIds.includes(post.id) || false;
 
-                {/* Browse writings feed */}
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                      <BookOpen className="w-4.5 h-4.5 text-violet-500" />
-                      প্রকাশিত প্রবন্ধ ও সাহিত্য সংকলন
-                    </h3>
-
-                    {/* Search bar */}
-                    <div className="relative w-full sm:w-64">
-                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                        <Search className="w-4 h-4" />
-                      </span>
-                      <input
-                        id="posts-feed-search"
-                        type="text"
-                        placeholder="লেখা, শিরোনাম বা লেখক খুঁজুন..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-9 pr-4 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-violet-500/10 focus:border-violet-400 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {loadingPosts ? (
-                    <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
-                      <div className="w-8 h-8 border-3 border-slate-300 border-t-violet-600 rounded-full animate-spin mx-auto mb-2"></div>
-                      <p className="text-xs text-slate-400">লেখাগুলো লোড করা হচ্ছে...</p>
-                    </div>
-                  ) : filteredPosts.length === 0 ? (
-                    <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
-                      <p className="text-xs text-slate-400">কোনো লেখা পাওয়া যায়নি।</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {filteredPosts.map((post) => {
-                        const isAdded = currentUser?.printBasketPostIds.includes(post.id) || false;
-                        const isFav = currentUser?.bookmarkedPostIds.includes(post.id) || false;
-
-                        return (
-                          <div 
-                            key={post.id}
-                            className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-sm transition-all duration-300 flex flex-col justify-between"
-                          >
-                            <div>
-                              {/* Top Row: Author & bookmark */}
-                              <div className="flex justify-between items-start gap-4 mb-2.5">
-                                <div className="flex items-center gap-2 text-xs">
-                                  <div className="w-6 h-6 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-[10px]">
-                                    {post.authorName.substring(0, 1)}
-                                  </div>
-                                  <span className="font-semibold text-slate-600">{post.authorName}</span>
-                                  <span className="text-slate-300 font-mono">•</span>
-                                  <span className="text-slate-400 font-mono">{new Date(post.createdAt).toLocaleDateString("bn-BD")}</span>
+                          return (
+                            <div 
+                              key={post.id}
+                              className="bg-white p-5 rounded-2xl border border-slate-150 hover:border-violet-300 shadow-3xs hover:shadow-md transition-all duration-300 flex flex-col justify-between"
+                            >
+                              <div>
+                                <div className="flex items-center justify-between gap-2 mb-3">
+                                  <span className="text-[10px] bg-slate-100 font-sans font-bold text-slate-500 px-2 py-0.5 rounded-full">
+                                    ✍️ {post.authorName}
+                                  </span>
+                                  {currentUser && (
+                                    <button
+                                      id={`toggle-bookmark-feed-${post.id}`}
+                                      onClick={() => handleAction("bookmark", post.id)}
+                                      className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                        isBookmarked 
+                                          ? "bg-violet-50 border-violet-200 text-violet-600 border-violet-300" 
+                                          : "bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600"
+                                      }`}
+                                    >
+                                      <BookMarked className="w-3.5 h-3.5 fill-current" />
+                                    </button>
+                                  )}
                                 </div>
 
-                                {currentUser && (
-                                  <button
-                                    id={`bookmark-feed-btn-${post.id}`}
-                                    onClick={() => handleAction("bookmark", post.id)}
-                                    className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                                      isFav 
-                                        ? "bg-violet-50 border-violet-200 text-violet-600" 
-                                        : "bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600"
-                                    }`}
-                                  >
-                                    <BookMarked className="w-3.5 h-3.5 fill-current" />
-                                  </button>
-                                )}
-                              </div>
-
-                              {/* Post Title & Excerpt */}
-                              <h4 
-                                id={`feed-post-title-click-${post.id}`}
-                                onClick={() => handleOpenPostReader(post)}
-                                className="text-base md:text-lg font-bold font-serif text-slate-800 hover:text-violet-700 transition-colors cursor-pointer leading-snug mb-1.5"
-                              >
-                                {post.title}
-                              </h4>
-                              <p className="text-xs text-slate-500 leading-relaxed font-sans mb-3 line-clamp-2">
-                                {post.excerpt}
-                              </p>
-                            </div>
-
-                            {/* Bottom Row: Info and Quick print */}
-                            <div className="pt-3 border-t border-slate-150 flex items-center justify-between flex-wrap gap-2">
-                              <div className="flex gap-4 text-[10px] text-slate-400 font-mono font-medium">
-                                <span className="flex items-center gap-1">👁️ {post.viewCount} ভিউ</span>
-                                <span className="flex items-center gap-1 text-orange-500 font-bold">🖨️ {post.addToPrintCount} প্রিন্টস</span>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <button
-                                  id={`read-post-feed-${post.id}`}
+                                <h4 
+                                  id={`feed-post-title-click-${post.id}`}
                                   onClick={() => handleOpenPostReader(post)}
-                                  className="py-1.5 px-3 hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                                  className="text-base md:text-lg font-bold font-serif text-slate-800 hover:text-violet-700 transition-colors cursor-pointer leading-snug mb-1.5"
                                 >
-                                  পড়ুন
-                                </button>
+                                  {post.title}
+                                </h4>
+                                <p className="text-xs text-slate-500 leading-relaxed font-sans mb-3 line-clamp-2">
+                                  {post.excerpt}
+                                </p>
+                              </div>
 
-                                {currentUser?.uid !== post.authorId && (
+                              <div className="pt-3 border-t border-slate-150 flex items-center justify-between flex-wrap gap-2">
+                                <div className="flex gap-4 text-[10px] text-slate-400 font-mono font-medium">
+                                  <span className="flex items-center gap-1">👁️ {post.viewCount} ভিউ</span>
+                                  <span className="flex items-center gap-1 text-orange-500 font-bold">🖨️ {post.addToPrintCount} প্রিন্টস</span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
                                   <button
-                                    id={`basket-post-feed-${post.id}`}
-                                    onClick={() => handleAction("basket", post.id)}
-                                    className={`py-1.5 px-3.5 rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer flex items-center gap-1 ${
-                                      isAdded 
-                                        ? "bg-slate-800 text-white" 
-                                        : "bg-orange-500 hover:bg-orange-600 text-white"
-                                    }`}
+                                    id={`read-post-feed-${post.id}`}
+                                    onClick={() => handleOpenPostReader(post)}
+                                    className="py-1.5 px-3 hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-semibold transition-all cursor-pointer"
                                   >
-                                    <Printer className="w-3.5 h-3.5" />
-                                    {isAdded ? "প্রিন্টেড" : "অ্যাড টু প্রিন্ট"}
-                                    <span className="font-mono text-[10px] opacity-80">({post.priceCoins} CC)</span>
+                                    পড়ুন
                                   </button>
-                                )}
+
+                                  {currentUser?.uid !== post.authorId && (
+                                    <button
+                                      id={`basket-post-feed-${post.id}`}
+                                      onClick={() => handleAction("basket", post.id)}
+                                      className={`py-1.5 px-3.5 rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer flex items-center gap-1 ${
+                                        isAdded 
+                                          ? "bg-slate-800 text-white" 
+                                          : "bg-orange-500 hover:bg-orange-600 text-white"
+                                      }`}
+                                    >
+                                      <Printer className="w-3.5 h-3.5" />
+                                      {isAdded ? "প্রিন্টেড" : "অ্যাড টু প্রিন্ট"}
+                                      <span className="font-mono text-[10px] opacity-85">({post.priceCoins} CC)</span>
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </section>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </section>
 
-              {/* RIGHT SIDE RAIL SECTION (col-span-4) */}
-              <section className="lg:col-span-4 flex flex-col gap-6">
-                
-                {/* Top Authors Chart */}
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-3.5">
-                    <TrendingUp className="w-4 h-4 text-emerald-600" />
-                    সেরা লেখক চার্ট (Top Authors Chart)
-                  </h3>
-                  {topAuthors.length === 0 ? (
-                    <p className="text-xs text-slate-400 py-4">কোনো ডাটা এখনও পাওয়া যায়নি।</p>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {topAuthors.slice(0, 3).map((auth: any, index: number) => (
-                        <div key={auth.name} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-100 last:border-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-5 h-5 flex items-center justify-center rounded-full font-mono font-bold text-[10px] ${
-                              index === 0 ? "bg-amber-100 text-amber-700" : index === 1 ? "bg-slate-100 text-slate-600" : "bg-orange-50 text-orange-750"
-                            }`}>
-                              {index + 1}
-                            </span>
-                            <span className="font-bold text-slate-700">{auth.name}</span>
-                          </div>
-                          <div className="text-right text-[10px] text-slate-400 font-mono">
-                            <span>{auth.postCount}টি লেখা</span>
-                            <span className="mx-1">•</span>
-                            <span className="text-orange-500 font-bold">{auth.totalPrints} প্রিন্টস</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Global Add to Print History */}
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-3.5">
-                    <History className="w-4 h-4 text-orange-500 animate-pulse" />
-                    গ্লোবাল প্রিন্ট ইতিহাস (Global Add to Print History)
-                  </h3>
-                  {adminData.globalHistory.length === 0 ? (
-                    <p className="text-xs text-slate-400 py-4">এখনও কোনো প্রিন্ট ইতিহাস নেই।</p>
-                  ) : (
-                    <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
-                      {adminData.globalHistory.slice(0, 5).map((h: any, idx: number) => {
-                        const borderColors = [
-                          "border-l-4 border-emerald-500 bg-emerald-50/40",
-                          "border-l-4 border-orange-500 bg-orange-50/40",
-                          "border-l-4 border-violet-500 bg-violet-50/40",
-                          "border-l-4 border-slate-300 bg-slate-50/40"
-                        ];
-                        return (
-                          <div key={h.id} className={`text-[10px] p-2 border border-slate-100 rounded-lg flex justify-between items-center gap-2 leading-tight ${borderColors[idx % borderColors.length]}`}>
-                            <div className="truncate flex-1">
-                              <span className="font-bold text-slate-600">{h.userDisplayName}</span>
-                              <span className="text-slate-400 mx-1">যোগ করেছেন</span>
-                              <span className="font-semibold text-violet-700 truncate inline-block max-w-[120px]" title={h.postTitle}>{h.postTitle}</span>
+                {/* Right Rail: Stats, charts and global history */}
+                <section className="lg:col-span-4 flex flex-col gap-6">
+                  {/* Top Authors chart */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-3.5">
+                      <TrendingUp className="w-4 h-4 text-emerald-600" />
+                      সেরা লেখক চার্ট (Top Authors Chart)
+                    </h3>
+                    {topAuthors.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-4">কোনো ডাটা এখনও পাওয়া যায়নি।</p>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {topAuthors.slice(0, 5).map((author: any, idx) => (
+                          <div key={author.id} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 rounded-lg px-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-5 h-5 flex items-center justify-center rounded-full font-mono font-bold text-[10px] ${
+                                idx === 0 ? "bg-amber-100 text-amber-700" : idx === 1 ? "bg-slate-100 text-slate-600" : "bg-orange-50 text-orange-750"
+                              }`}>
+                                {idx + 1}
+                              </span>
+                              <div>
+                                <p className="font-bold text-slate-700 font-serif">{author.name}</p>
+                                <p className="text-[9px] text-slate-400">{author.postCount}টি লেখা</p>
+                              </div>
                             </div>
-                            <span className="text-slate-400 font-mono shrink-0">
-                              {new Date(h.timestamp).toLocaleTimeString("bn-BD", { hour: "numeric", minute: "2-digit" })}
-                            </span>
+                            <div className="text-right text-[10px] text-slate-400 font-mono">
+                              <span className="text-emerald-600 font-bold">{author.totalViews} ভিউ</span>
+                              <span className="mx-1">•</span>
+                              <span className="text-orange-500 font-bold">{author.totalPrints} প্রিন্টস</span>
+                            </div>
                           </div>
-                        );
-                      })}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Global print history */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-3.5">
+                      <History className="w-4 h-4 text-orange-500 animate-pulse" />
+                      গ্লোবাল প্রিন্ট ইতিহাস (Global Print History)
+                    </h3>
+                    {adminData.globalHistory.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-4">এখনও কোনো প্রিন্ট ইতিহাস নেই।</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                        {adminData.globalHistory.slice(0, 10).map((h: any, idx: number) => {
+                          const borderColors = [
+                            "border-l-4 border-emerald-500 bg-emerald-50/40",
+                            "border-l-4 border-orange-500 bg-orange-50/40",
+                            "border-l-4 border-violet-500 bg-violet-50/40",
+                            "border-l-4 border-slate-300 bg-slate-50/40"
+                          ];
+                          return (
+                            <div key={h.id} className={`text-[10px] p-2.5 border border-slate-100 rounded-lg flex justify-between items-center gap-2 leading-tight ${borderColors[idx % borderColors.length]}`}>
+                              <div className="truncate flex-1">
+                                <span className="font-bold text-slate-600">{h.userDisplayName}</span>
+                                <span className="text-slate-400 mx-1">যোগ করেছেন</span>
+                                <span className="font-semibold text-violet-700 truncate inline-block max-w-[120px]" title={h.postTitle}>{h.postTitle}</span>
+                              </div>
+                              <span className="text-slate-400 font-mono shrink-0">
+                                {new Date(h.timestamp).toLocaleTimeString("bn-BD", { hour: "numeric", minute: "2-digit" })}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+              </div>
+            ) : activeNavView === "profile" ? (
+              /* --- MY PROFILE VIEW: Includes Reader Toggle & Writer Toggle --- */
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+                  {/* Outer Section Toggle Header */}
+                  <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50">
+                    <div className="flex items-center gap-2">
+                      <User className="w-5 h-5 text-violet-600" />
+                      <div>
+                        <h2 className="text-base font-serif font-bold text-slate-800">আমার প্রোফাইল ড্যাশবোর্ড (My Profile)</h2>
+                        <p className="text-xs text-slate-400">সহজেই পাঠক এবং লেখক অংশ টগল করুন</p>
+                      </div>
                     </div>
-                  )}
+
+                    <div className="flex bg-slate-200 p-1.5 rounded-2xl text-xs font-bold gap-1 shadow-inner">
+                      <button
+                        id="profile-toggle-reader"
+                        onClick={() => setProfileSection("reader")}
+                        className={`px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                          profileSection === "reader"
+                            ? "bg-white text-emerald-750 shadow-2xs font-extrabold"
+                            : "text-slate-500 hover:text-slate-850"
+                        }`}
+                      >
+                        <BookOpen className="w-4 h-4 text-emerald-600" />
+                        পাঠক অংশ (Reader)
+                      </button>
+                      <button
+                        id="profile-toggle-writer"
+                        onClick={() => setProfileSection("writer")}
+                        className={`px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                          profileSection === "writer"
+                            ? "bg-white text-orange-650 shadow-2xs font-extrabold"
+                            : "text-slate-500 hover:text-slate-850"
+                        }`}
+                      >
+                        <PenTool className="w-4 h-4 text-orange-500" />
+                        লেখক অংশ (Writer)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Profile section body content */}
+                  <div className="p-6">
+                    {profileSection === "reader" ? (
+                      <ReaderPanel
+                        profile={currentUser!}
+                        posts={posts}
+                        authors={adminData.users.filter((u) => u.role === "writer")}
+                        onAction={handleAction}
+                        onOpenCoinsModal={() => setIsCoinsOpen(true)}
+                        onOpenPost={handleOpenPostReader}
+                        activeTab={readerTab}
+                        onTabChange={setReaderTab}
+                      />
+                    ) : (
+                      <WriterPanel
+                        profile={currentUser!}
+                        posts={posts}
+                        onOpenPost={handleOpenPostReader}
+                        onPublishPost={handlePublishPost}
+                        onWithdrawRequest={handleWithdrawRequest}
+                      />
+                    )}
+                  </div>
                 </div>
-
-              </section>
-
-            </div>
+              </div>
+            ) : (
+              /* --- ADMIN PANEL VIEW --- */
+              <div className="max-w-6xl mx-auto">
+                <AdminPanel
+                  profile={currentUser!}
+                  adminData={adminData}
+                  onApproveWithdraw={handleApproveWithdraw}
+                  onRefreshAdminData={fetchAdminData}
+                />
+              </div>
+            )}
           </main>
 
           {/* FOOTER */}

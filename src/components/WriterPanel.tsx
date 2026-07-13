@@ -230,44 +230,71 @@ export default function WriterPanel({
                 <p className="text-[10px] text-slate-400 mt-1">ডানদিকের "নতুন লেখা প্রকাশ করুন" বাটনে ক্লিক করে প্রথম লেখাটি যুক্ত করুন।</p>
               </div>
             ) : (
-              <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                <table className="excel-table w-full min-w-[700px] border-collapse">
+              <div className="overflow-x-auto border border-slate-300 rounded-xl shadow-xs">
+                <table className="excel-table w-full min-w-[800px] border-collapse bg-white">
                   <thead>
-                    <tr>
-                      <th className="w-2/5">প্রকাশিত লেখার শিরোনাম (Title)</th>
-                      <th className="text-center">১. অ্যাড টু প্রিন্ট</th>
-                      <th className="text-center">২. ভিউ কাউন্ট</th>
-                      <th className="text-center">৩. আর্নিং রিপোর্ট (CC)</th>
-                      <th className="text-center">৩. আর্নিং রিপোর্ট (BDT)</th>
-                      <th className="text-center">অ্যাকশন</th>
+                    <tr className="bg-slate-100 border-b-2 border-slate-300">
+                      <th className="px-4 py-3 text-left font-sans font-bold text-slate-700 text-xs border-r border-slate-200">A. প্রকাশিত লেখার শিরোনাম (Title)</th>
+                      <th className="px-4 py-3 text-center font-sans font-bold text-slate-700 text-xs border-r border-slate-200">B. অ্যাড টু প্রিন্ট কাউন্ট</th>
+                      <th className="px-4 py-3 text-center font-sans font-bold text-slate-700 text-xs border-r border-slate-200">C. মোট ভিউ সংখ্যা</th>
+                      <th className="px-4 py-3 text-center font-sans font-bold text-slate-700 text-xs border-r border-slate-200">D. কয়েন আর্নিং (CC)</th>
+                      <th className="px-4 py-3 text-center font-sans font-bold text-slate-700 text-xs border-r border-slate-200">E. টাকা আর্নিং (BDT ৳)</th>
+                      <th className="px-4 py-3 text-center font-sans font-bold text-slate-700 text-xs">F. অ্যাকশন (Action)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {authorPosts.map((post) => {
+                    {authorPosts.map((post, idx) => {
                       const postCoins = post.addToPrintCount * post.priceCoins;
                       const postMoney = post.addToPrintCount * post.priceMoney;
 
                       return (
-                        <tr key={post.id} className="cursor-pointer">
-                          <td 
-                            id={`writer-post-title-${post.id}`}
-                            onClick={() => onOpenPost(post)}
-                            className="font-serif font-bold text-slate-700 hover:text-violet-600 text-sm transition-colors text-left"
-                          >
-                            {post.title}
+                        <tr 
+                          key={post.id} 
+                          onClick={() => onOpenPost(post)}
+                          className="hover:bg-slate-50 border-b border-slate-200 transition-colors group cursor-pointer"
+                        >
+                          {/* Title */}
+                          <td className="px-4 py-3 text-left border-r border-slate-200 min-w-[250px]">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-slate-400 font-mono font-medium w-5 shrink-0">{idx + 1}</span>
+                              <span className="font-serif font-bold text-slate-700 group-hover:text-violet-600 transition-colors text-sm">
+                                {post.title}
+                              </span>
+                            </div>
                           </td>
-                          <td className="text-center font-bold text-orange-500">{post.addToPrintCount} বার</td>
-                          <td className="text-center text-slate-600">{post.viewCount} বার</td>
-                          <td className="text-center font-bold text-orange-500">{postCoins} CC</td>
-                          <td className="text-center font-bold text-violet-600">৳{postMoney}</td>
-                          <td className="text-center">
+
+                          {/* Print Count */}
+                          <td className="px-4 py-3 text-center border-r border-slate-200 font-bold font-mono text-xs text-orange-500">
+                            {post.addToPrintCount} বার
+                          </td>
+
+                          {/* View Count */}
+                          <td className="px-4 py-3 text-center border-r border-slate-200 font-mono text-xs text-slate-600">
+                            {post.viewCount} বার
+                          </td>
+
+                          {/* Coin Earnings */}
+                          <td className="px-4 py-3 text-center border-r border-slate-200 font-bold font-mono text-xs text-amber-600">
+                            {postCoins} CC
+                          </td>
+
+                          {/* Money/BDT Earnings */}
+                          <td className="px-4 py-3 text-center border-r border-slate-200 font-bold font-mono text-xs text-violet-700">
+                            ৳ {postMoney}
+                          </td>
+
+                          {/* Edit / View Button */}
+                          <td className="px-4 py-3 text-center">
                             <button
                               id={`writer-post-edit-${post.id}`}
-                              onClick={() => onOpenPost(post)}
-                              className="py-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md text-xs font-medium flex items-center justify-center gap-1 mx-auto transition-all"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent duplicate trigger from row click
+                                onOpenPost(post);
+                              }}
+                              className="py-1 px-3 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-lg text-xs font-bold flex items-center justify-center gap-1 mx-auto transition-all cursor-pointer"
                             >
                               <Edit className="w-3.5 h-3.5" />
-                              রিভিউ / এডিট
+                              রিভিউ ও এডিট
                             </button>
                           </td>
                         </tr>

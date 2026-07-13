@@ -58,38 +58,45 @@ export default function ReaderPanel({
         <button
           id="reader-coins-stat-btn"
           onClick={onOpenCoinsModal}
-          className="text-left bg-white hover:bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-sm transition-all duration-300 group cursor-pointer"
+          className="text-left bg-white hover:bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-300 group cursor-pointer w-full flex items-center justify-between"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-orange-100 text-orange-600 p-3 rounded-xl group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">
-                <Coins className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">বর্তমান কয়েন (Coins)</p>
-                <p className="text-2xl font-bold font-mono text-slate-800 mt-1">{profile.coins} CC</p>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="bg-orange-100 text-orange-600 p-3 rounded-xl group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">
+              <Coins className="w-5 h-5" />
             </div>
-            <span className="text-[10px] bg-orange-50 text-orange-600 font-bold px-2.5 py-1 rounded-full group-hover:bg-orange-600 group-hover:text-white transition-all">
-              রিচার্জ / কিনুন ➜
-            </span>
+            <div>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">বর্তমান কয়েন (Coins)</p>
+              <p className="text-2xl font-bold font-mono text-slate-800 mt-1">{profile.coins} CC</p>
+            </div>
           </div>
+          <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-md group-hover:bg-orange-500 group-hover:text-white transition-all font-sans">
+            বিশদ দেখুন ➜
+          </span>
         </button>
 
         {/* Current Wallet Balance (Synced) */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="bg-violet-100 text-violet-600 p-3 rounded-xl">
-            <Wallet className="w-5 h-5" />
+        <button
+          id="reader-balance-stat-btn"
+          onClick={onOpenCoinsModal}
+          className="text-left bg-white hover:bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-300 group cursor-pointer w-full flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <div className="bg-violet-100 text-violet-600 p-3 rounded-xl group-hover:bg-violet-500 group-hover:text-white transition-all duration-300">
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">ওয়ালেটের কারেন্ট ব্যালেন্স</p>
+              <p className="text-2xl font-bold font-mono text-slate-800 mt-1">৳ {profile.currentBalance}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">ওয়ালেটের কারেন্ট ব্যালেন্স</p>
-            <p className="text-2xl font-bold font-mono text-slate-800 mt-1">৳ {profile.currentBalance}</p>
-          </div>
-        </div>
+          <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-md group-hover:bg-violet-600 group-hover:text-white transition-all font-sans">
+            বিশদ দেখুন ➜
+          </span>
+        </button>
       </div>
 
       {/* Profile Details Card */}
-      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex items-center gap-4">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-4">
         <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-lg font-serif shrink-0">
           {profile.displayName.substring(0, 1)}
         </div>
@@ -100,45 +107,48 @@ export default function ReaderPanel({
         </div>
       </div>
 
-      {/* Reader Panel Toggle Navigation */}
-      <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1.5 rounded-2xl">
+      {/* Reader Panel Toggle Navigation using Soft Minimalist Green, Orange and Purple Box Button Combinations */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Bookmark Button: Purple (বেগুনি) */}
         <button
           id="reader-tab-bookmarks"
           onClick={() => setActiveTab("bookmarks")}
-          className={`py-3 px-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer ${
+          className={`p-4 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-300 flex flex-col items-center justify-center gap-2 cursor-pointer border ${
             activeTab === "bookmarks"
-              ? "bg-white text-violet-600 shadow-sm"
-              : "text-slate-600 hover:text-slate-900"
+              ? "bg-violet-50 text-violet-800 border-2 border-violet-300 shadow-xs shadow-violet-100"
+              : "bg-violet-50/20 text-violet-600 border-violet-100/40 hover:bg-violet-50/55 hover:border-violet-200"
           }`}
         >
-          <BookMarked className="w-4 h-4 shrink-0 text-violet-500" />
-          বুকমার্ক ({bookmarkedPosts.length})
+          <BookMarked className="w-5 h-5 text-violet-500" />
+          <span>বুকমার্ক করা লেখা ({bookmarkedPosts.length})</span>
         </button>
 
+        {/* Basket Button: Green (সবুজ) */}
         <button
           id="reader-tab-basket"
           onClick={() => setActiveTab("basket")}
-          className={`py-3 px-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer ${
+          className={`p-4 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-300 flex flex-col items-center justify-center gap-2 cursor-pointer border ${
             activeTab === "basket"
-              ? "bg-white text-emerald-700 shadow-sm"
-              : "text-slate-600 hover:text-slate-900"
+              ? "bg-emerald-50 text-emerald-800 border-2 border-emerald-300 shadow-xs shadow-emerald-100"
+              : "bg-emerald-50/20 text-emerald-600 border-emerald-100/40 hover:bg-emerald-50/55 hover:border-emerald-200"
           }`}
         >
-          <ShoppingBag className="w-4 h-4 shrink-0 text-emerald-600" />
-          বাস্কেট ({basketPosts.length})
+          <ShoppingBag className="w-5 h-5 text-emerald-600" />
+          <span>প্রিন্ট বাস্কেট ({basketPosts.length})</span>
         </button>
 
+        {/* Following List Button: Orange (কমলা) */}
         <button
           id="reader-tab-following"
           onClick={() => setActiveTab("following")}
-          className={`py-3 px-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer ${
+          className={`p-4 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-300 flex flex-col items-center justify-center gap-2 cursor-pointer border ${
             activeTab === "following"
-              ? "bg-white text-orange-600 shadow-sm"
-              : "text-slate-600 hover:text-slate-900"
+              ? "bg-orange-50 text-orange-800 border-2 border-orange-300 shadow-xs shadow-orange-100"
+              : "bg-orange-50/20 text-orange-600 border-orange-100/40 hover:bg-orange-50/55 hover:border-orange-200"
           }`}
         >
-          <Users className="w-4 h-4 shrink-0 text-orange-500" />
-          ফলোয়িং লেখক ({followedAuthors.length})
+          <Users className="w-5 h-5 text-orange-500" />
+          <span>ফলোয়িং লেখক তালিকা ({followedAuthors.length})</span>
         </button>
       </div>
 

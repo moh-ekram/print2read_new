@@ -264,17 +264,30 @@ app.put("/api/users/:uid", (req, res) => {
   const { displayName, bio, role } = req.body;
 
   const db = getDatabase();
-  const userIdx = db.users.findIndex((u: any) => u.uid === uid);
+  let userIdx = db.users.findIndex((u: any) => u.uid === uid);
   if (userIdx === -1) {
-    return res.status(404).json({ error: "User not found" });
+    const newUser = {
+      uid,
+      email: uid.includes("@") ? uid : `${uid}@readtoprint.com`,
+      displayName: displayName || "User",
+      role: role || "reader",
+      coins: 100,
+      currentBalance: 200,
+      bookmarkedPostIds: [],
+      printBasketPostIds: [],
+      followingAuthors: [],
+      bio: bio || "স্বাগতম রিড-টু-প্রিন্ট অ্যাপ্লিকেশনে।"
+    };
+    db.users.push(newUser);
+    userIdx = db.users.length - 1;
+  } else {
+    db.users[userIdx] = {
+      ...db.users[userIdx],
+      displayName: displayName || db.users[userIdx].displayName,
+      bio: bio !== undefined ? bio : db.users[userIdx].bio,
+      role: role || db.users[userIdx].role,
+    };
   }
-
-  db.users[userIdx] = {
-    ...db.users[userIdx],
-    displayName: displayName || db.users[userIdx].displayName,
-    bio: bio !== undefined ? bio : db.users[userIdx].bio,
-    role: role || db.users[userIdx].role,
-  };
 
   saveDatabase(db);
   res.json(db.users[userIdx]);
@@ -425,7 +438,8 @@ app.get("/api/admin/data", (req, res) => {
       email: u.email,
       role: u.role,
       coins: u.coins,
-      currentBalance: u.currentBalance
+      currentBalance: u.currentBalance,
+      bio: u.bio
     })),
     globalHistory: db.globalHistory
   });
