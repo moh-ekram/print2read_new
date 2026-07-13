@@ -67,7 +67,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       } else {
         // --- HIGH FIDELITY SANDBOX AUTHENTICATION ---
         // Generates user ID based on email prefix or custom string
-        const uid = `sandbox-${email.split("@")[0]}-${role}`;
+        const cleanEmailPrefix = email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "-");
+        const uid = `sandbox-${cleanEmailPrefix}-${role}`;
         
         if (isSignUp) {
           // Put new user into db via backend
