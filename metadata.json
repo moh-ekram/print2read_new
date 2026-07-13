@@ -1,0 +1,6 @@
+{
+  "name": "Read-to-Print",
+  "description": "A premium, minimalist web application for readers and writers with Firebase Auth structure, toggleable profile panels, coin-wallet sync, bookmark and print basket managers, and real-time Excel-style writer telemetry.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
