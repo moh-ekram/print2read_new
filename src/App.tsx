@@ -107,7 +107,7 @@ export default function App() {
     if (isFirebaseConfigured && firebaseAuth) {
       const unsubscribe = firebaseAuth.onAuthStateChanged((user) => {
         if (user) {
-          loadUserSession(user.uid);
+          loadUserSession(user.uid, user.email || undefined);
         } else {
           setCurrentUser(null);
         }
@@ -128,20 +128,36 @@ export default function App() {
     }
   }, []);
 
-  const loadUserSession = async (uid: string) => {
+  const loadUserSession = async (uid: string, email?: string) => {
     try {
       if (isFirebaseConfigured) {
-        const profile = await getUserProfileFromFirestore(uid);
+        const actualEmail = email || firebaseAuth?.currentUser?.email || undefined;
+        const profile = await getUserProfileFromFirestore(uid, actualEmail ? { email: actualEmail } : undefined);
         if (profile) {
-          setCurrentUser(profile as any);
-          setProfileView(profile.role);
-          setProfileSection(profile.role === "writer" ? "writer" : "reader");
-          fetchTransactions(profile.uid);
+          const updatedProfile = { ...profile };
+          if (actualEmail) {
+            updatedProfile.email = actualEmail;
+          }
+          // Force admin privileges if the email is mohammad.001ekram@gmail.com
+          if (
+            updatedProfile.email?.toLowerCase().trim() === "mohammad.001ekram@gmail.com" ||
+            actualEmail?.toLowerCase().trim() === "mohammad.001ekram@gmail.com"
+          ) {
+            updatedProfile.role = "admin";
+          }
+          setCurrentUser(updatedProfile as any);
+          setProfileView(updatedProfile.role);
+          setProfileSection(updatedProfile.role === "writer" ? "writer" : "reader");
+          fetchTransactions(updatedProfile.uid);
         }
       } else {
         const response = await fetch(`/api/users/${uid}`);
         if (response.ok) {
           const profile = await response.json();
+          // Force admin in sandbox mode if email matches
+          if (profile.email?.toLowerCase().trim() === "mohammad.001ekram@gmail.com") {
+            profile.role = "admin";
+          }
           setCurrentUser(profile);
           setProfileView(profile.role);
           setProfileSection(profile.role === "writer" ? "writer" : "reader");
@@ -209,13 +225,17 @@ export default function App() {
 
   // 2. Interactive Handlers
   const handleAuthSuccess = (profile: UserProfile) => {
-    setCurrentUser(profile);
-    setProfileView(profile.role);
-    setProfileSection(profile.role === "writer" ? "writer" : "reader");
-    fetchTransactions(profile.uid);
+    const updatedProfile = { ...profile };
+    if (updatedProfile.email?.toLowerCase().trim() === "mohammad.001ekram@gmail.com") {
+      updatedProfile.role = "admin";
+    }
+    setCurrentUser(updatedProfile as any);
+    setProfileView(updatedProfile.role);
+    setProfileSection(updatedProfile.role === "writer" ? "writer" : "reader");
+    fetchTransactions(updatedProfile.uid);
     fetchAdminData();
     if (!isFirebaseConfigured) {
-      localStorage.setItem("sandbox_user_uid", profile.uid);
+      localStorage.setItem("sandbox_user_uid", updatedProfile.uid);
     }
   };
 
@@ -679,7 +699,10 @@ export default function App() {
                   : activeNavView === item.id;
 
                 const isProfileItem = item.id === "profile";
-                const showAdminButton = isProfileItem && (currentUser?.email === "mohammad.001ekram@gmail.com" || currentUser?.role === "admin");
+                const showAdminButton = isProfileItem && (
+                  currentUser?.email?.toLowerCase().trim() === "mohammad.001ekram@gmail.com" || 
+                  currentUser?.role === "admin"
+                );
 
                 return (
                   <React.Fragment key={item.id}>
@@ -860,7 +883,10 @@ export default function App() {
                 : activeNavView === item.id;
 
               const isProfileItem = item.id === "profile";
-              const showAdminButton = isProfileItem && (currentUser?.email === "mohammad.001ekram@gmail.com" || currentUser?.role === "admin");
+              const showAdminButton = isProfileItem && (
+                currentUser?.email?.toLowerCase().trim() === "mohammad.001ekram@gmail.com" || 
+                currentUser?.role === "admin"
+              );
 
               return (
                 <React.Fragment key={item.id}>

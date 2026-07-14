@@ -97,7 +97,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         // --- REAL FIREBASE MODE ---
         if (activeTab === "login") {
           const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, password);
-          const profile = await getUserProfileFromFirestore(userCredential.user.uid);
+          const profile = await getUserProfileFromFirestore(userCredential.user.uid, {
+            email: userCredential.user.email || email
+          });
           if (profile) {
             setSuccessMsg("সফলভাবে লগইন করা হয়েছে!");
             setTimeout(() => {
@@ -113,6 +115,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           const profile = await saveUserProfileToFirestore(userCredential.user.uid, {
             displayName,
             role: selectedRole,
+            email: userCredential.user.email || email,
             bio: bio || (selectedRole === "writer" ? "লেখক হিসেবে নতুন প্রবন্ধ প্রকাশ করতে ভালোবাসেন।" : "বই পড়তে ও সংগ্রহ করতে ভালোবাসেন।")
           });
           if (profile) {
@@ -204,6 +207,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       const profile = await getUserProfileFromFirestore(result.user.uid, {
         displayName: result.user.displayName || "গুগল ইউজার",
         role: "reader",
+        email: result.user.email || undefined,
         bio: "গুগল অ্যাকাউন্টের মাধ্যমে লগইনকৃত পাঠক।"
       });
 

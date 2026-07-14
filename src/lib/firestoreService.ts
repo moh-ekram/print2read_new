@@ -201,7 +201,7 @@ export async function fetchPostsFromFirestore() {
 }
 
 // Fetch user profile from Firestore or lazy create
-export async function getUserProfileFromFirestore(uid: string, defaultData?: { displayName?: string; role?: string; bio?: string }) {
+export async function getUserProfileFromFirestore(uid: string, defaultData?: { displayName?: string; role?: string; bio?: string; email?: string }) {
   if (!firebaseDb) return null;
   const path = `users/${uid}`;
   try {
@@ -209,12 +209,19 @@ export async function getUserProfileFromFirestore(uid: string, defaultData?: { d
     const userSnap = await getDoc(userDocRef);
 
     if (userSnap.exists()) {
-      return userSnap.data();
+      const data = userSnap.data();
+      // If the email field is empty or contains the placeholder "@readtoprint.com", update it with their real email if available
+      if ((!data.email || data.email.endsWith("@readtoprint.com")) && defaultData?.email && !defaultData.email.endsWith("@readtoprint.com")) {
+        data.email = defaultData.email;
+        await updateDoc(userDocRef, { email: defaultData.email });
+      }
+      return data;
     } else {
       // Lazy Create User Profile
+      const emailVal = defaultData?.email || (uid.includes("@") ? uid : `${uid}@readtoprint.com`);
       const newUser = {
         uid,
-        email: uid.includes("@") ? uid : `${uid}@readtoprint.com`,
+        email: emailVal,
         displayName: defaultData?.displayName || uid.split("-")[0] || "User",
         role: defaultData?.role || "reader",
         coins: 100,
@@ -234,7 +241,7 @@ export async function getUserProfileFromFirestore(uid: string, defaultData?: { d
 }
 
 // Save or Update user profile
-export async function saveUserProfileToFirestore(uid: string, profileData: { displayName?: string; bio?: string; role?: string }) {
+export async function saveUserProfileToFirestore(uid: string, profileData: { displayName?: string; bio?: string; role?: string; email?: string }) {
   if (!firebaseDb) return null;
   const path = `users/${uid}`;
   try {
@@ -249,9 +256,10 @@ export async function saveUserProfileToFirestore(uid: string, profileData: { dis
       };
       await updateDoc(userDocRef, profileData);
     } else {
+      const emailVal = profileData.email || (uid.includes("@") ? uid : `${uid}@readtoprint.com`);
       finalProfile = {
         uid,
-        email: uid.includes("@") ? uid : `${uid}@readtoprint.com`,
+        email: emailVal,
         displayName: profileData.displayName || "User",
         role: profileData.role || "reader",
         coins: 100,
