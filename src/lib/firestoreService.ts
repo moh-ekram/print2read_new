@@ -387,6 +387,28 @@ export async function handleUserActionInFirestore(
       }
       const user = userSnap.data();
 
+      // Perform any additional reads BEFORE any writes
+      let postSnap: any = null;
+      let postRef: any = null;
+      let post: any = null;
+      let authorSnap: any = null;
+      let authorRef: any = null;
+
+      if (actionType === "basket" || actionType === "read") {
+        const { postId } = payload;
+        if (postId) {
+          postRef = doc(firebaseDb!, "posts", postId);
+          postSnap = await transaction.get(postRef);
+          if (postSnap.exists()) {
+            post = postSnap.data();
+            if (post.authorId) {
+              authorRef = doc(firebaseDb!, "users", post.authorId);
+              authorSnap = await transaction.get(authorRef);
+            }
+          }
+        }
+      }
+
       if (actionType === "checkout_basket") {
         user.printBasketPostIds = [];
         transaction.update(userRef, { printBasketPostIds: [] });
@@ -439,19 +461,13 @@ export async function handleUserActionInFirestore(
       }
 
       if (actionType === "basket") {
-        const { postId } = payload;
-        if (!postId) throw new Error("postId is required");
-
-        const postRef = doc(firebaseDb!, "posts", postId);
-        const postSnap = await transaction.get(postRef);
-        if (!postSnap.exists()) throw new Error("Post not found");
-        const post = postSnap.data();
+        if (!postSnap || !postSnap.exists()) throw new Error("Post not found");
 
         let basket = [...(user.printBasketPostIds || [])];
-        const hasInBasket = basket.includes(postId);
+        const hasInBasket = basket.includes(post.id);
 
         if (hasInBasket) {
-          basket = basket.filter((id) => id !== postId);
+          basket = basket.filter((id) => id !== post.id);
           const updatedPrintCount = Math.max(0, (post.addToPrintCount || 0) - 1);
           transaction.update(postRef, { addToPrintCount: updatedPrintCount });
           transaction.update(userRef, { printBasketPostIds: basket });
@@ -467,7 +483,7 @@ export async function handleUserActionInFirestore(
           const updatedCoins = (user.coins || 0) - priceCoins;
           const updatedBalance = Math.max(0, (user.currentBalance || 0) - priceMoney);
 
-          basket.push(postId);
+          basket.push(post.id);
           const updatedPrintCount = (post.addToPrintCount || 0) + 1;
 
           transaction.update(userRef, {
@@ -479,16 +495,12 @@ export async function handleUserActionInFirestore(
           transaction.update(postRef, { addToPrintCount: updatedPrintCount });
 
           // Pay author
-          if (post.authorId) {
-            const authorRef = doc(firebaseDb!, "users", post.authorId);
-            const authorSnap = await transaction.get(authorRef);
-            if (authorSnap.exists()) {
-              const author = authorSnap.data();
-              transaction.update(authorRef, {
-                coins: (author.coins || 0) + priceCoins,
-                currentBalance: (author.currentBalance || 0) + priceMoney
-              });
-            }
+          if (authorSnap && authorSnap.exists()) {
+            const author = authorSnap.data();
+            transaction.update(authorRef, {
+              coins: (author.coins || 0) + priceCoins,
+              currentBalance: (author.currentBalance || 0) + priceMoney
+            });
           }
 
           // Global history addition
@@ -525,13 +537,7 @@ export async function handleUserActionInFirestore(
       }
 
       if (actionType === "read") {
-        const { postId } = payload;
-        if (!postId) throw new Error("postId is required");
-
-        const postRef = doc(firebaseDb!, "posts", postId);
-        const postSnap = await transaction.get(postRef);
-        if (!postSnap.exists()) throw new Error("Post not found");
-        const post = postSnap.data();
+        if (!postSnap || !postSnap.exists()) throw new Error("Post not found");
 
         transaction.update(postRef, {
           viewCount: (post.viewCount || 0) + 1
@@ -642,12 +648,14 @@ export async function handleWithdrawActionInFirestore(requestId: string, status:
       if (!wrSnap.exists()) throw new Error("Withdraw request not found.");
       const request = wrSnap.data();
 
+      // Read user profile BEFORE the write to maintain transaction ordering requirements
+      const userRef = doc(firebaseDb!, "users", request.userId);
+      const userSnap = await transaction.get(userRef);
+
       transaction.update(wrRef, { status });
 
       if (status === "rejected") {
         // Refund money
-        const userRef = doc(firebaseDb!, "users", request.userId);
-        const userSnap = await transaction.get(userRef);
         if (userSnap.exists()) {
           const writer = userSnap.data();
           transaction.update(userRef, {
@@ -778,12 +786,15 @@ export async function approveWriterApplicationInFirestore(appId: string, status:
       if (!appSnap.exists()) throw new Error("Application not found.");
       const application = appSnap.data();
 
+      // Read user profile BEFORE doing any writes
+      const userRef = doc(firebaseDb!, "users", application.userId);
+      const userSnap = await transaction.get(userRef);
+
+      // Now all reads are complete, execute all writes
       transaction.update(appRef, { status });
 
       if (status === "approved") {
         // 1. Update user role to "writer" and set bio
-        const userRef = doc(firebaseDb!, "users", application.userId);
-        const userSnap = await transaction.get(userRef);
         if (userSnap.exists()) {
           transaction.update(userRef, {
             role: "writer",
