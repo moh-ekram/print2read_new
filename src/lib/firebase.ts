@@ -17,6 +17,7 @@ const firebaseConfig = {
   storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "readtoprint.firebasestorage.app",
   messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "776993866881",
   appId: env.VITE_FIREBASE_APP_ID || "1:776993866881:web:964a9b0c3f945cf3687980",
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || undefined,
 };
 
 // Check if valid Firebase credentials are provided

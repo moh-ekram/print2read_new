@@ -54,6 +54,21 @@ export interface WithdrawRequest {
   timestamp: string;
 }
 
+export interface WriterApplication {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userDisplayName: string;
+  category: string;
+  motivation: string;
+  sample1Title: string;
+  sample1Content: string;
+  sample2Title: string;
+  sample2Content: string;
+  status: "pending" | "approved" | "rejected";
+  timestamp: string;
+}
+
 export interface FollowerDetail {
   uid: string;
   displayName: string;

@@ -36,6 +36,7 @@ import {
   TrendingUp, 
   History, 
   PenTool, 
+  Clock,
   ShieldAlert,
   Search,
   BookMarked,
@@ -90,8 +91,11 @@ export default function App() {
 
   // Author Application fields
   const [appCategory, setAppCategory] = useState("প্রবন্ধ ও গল্প");
-  const [appSamples, setAppSamples] = useState("");
   const [appMotivation, setAppMotivation] = useState("");
+  const [sample1Title, setSample1Title] = useState("");
+  const [sample1Content, setSample1Content] = useState("");
+  const [sample2Title, setSample2Title] = useState("");
+  const [sample2Content, setSample2Content] = useState("");
   const [selectedAuthorForView, setSelectedAuthorForView] = useState<any | null>(null);
   const [authorSearchQuery, setAuthorSearchQuery] = useState("");
 
@@ -467,42 +471,67 @@ export default function App() {
   const handleWriterApplicationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
+    if (!sample1Title || !sample1Content || !sample2Title || !sample2Content) {
+      alert("দয়া করে ২ টি নমুনা লেখার শিরোনাম এবং কন্টেন্ট সম্পূর্ণ পূরণ করুন।");
+      return;
+    }
     try {
-      if (isFirebaseConfigured) {
-        const updated = await saveUserProfileToFirestore(currentUser.uid, {
-          role: "writer",
-          bio: appMotivation || currentUser.bio || "লেখক হিসেবে স্বাগতম রিড-টু-প্রিন্ট অ্যাপ্লিকেশনে।"
-        });
-        if (updated) {
-          setCurrentUser(updated as any);
-          alert("অভিনন্দন! আপনার লেখক আবেদন অনুমোদিত হয়েছে এবং আপনি এখন একজন রেজিস্টার্ড লেখক।");
-          setActiveNavView("writer-panel");
-          fetchAdminData();
-        } else {
-          alert("আবেদন সাবমিট করতে ত্রুটি হয়েছে।");
-        }
+      const response = await fetch("/api/admin/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUser.uid,
+          userEmail: currentUser.email,
+          userDisplayName: currentUser.displayName,
+          category: appCategory,
+          motivation: appMotivation,
+          sample1Title,
+          sample1Content,
+          sample2Title,
+          sample2Content
+        })
+      });
+
+      if (response.ok) {
+        alert("আপনার লেখক আবেদনটি সফলভাবে সাবমিট করা হয়েছে এবং অ্যাডমিন মূল্যায়নের জন্য পাঠানো হয়েছে।");
+        setAppMotivation("");
+        setSample1Title("");
+        setSample1Content("");
+        setSample2Title("");
+        setSample2Content("");
+        fetchAdminData();
+        await loadUserSession(currentUser.uid);
       } else {
-        const response = await fetch(`/api/users/${currentUser.uid}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            role: "writer",
-            bio: appMotivation || currentUser.bio || "লেখক হিসেবে স্বাগতম রিড-টু-প্রিন্ট অ্যাপ্লিকেশনে।"
-          })
-        });
-        if (response.ok) {
-          const updated = await response.json();
-          setCurrentUser(updated);
-          alert("অভিনন্দন! আপনার লেখক আবেদন অনুমোদিত হয়েছে এবং আপনি এখন একজন রেজিস্টার্ড লেখক।");
-          setActiveNavView("writer-panel");
-          fetchAdminData();
-        } else {
-          alert("আবেদন সাবমিট করতে ত্রুটি হয়েছে।");
-        }
+        const err = await response.json();
+        alert(err.error || "আবেদন সাবমিট করতে ত্রুটি হয়েছে।");
       }
     } catch (e) {
       console.error(e);
       alert("সার্ভার ত্রুটি ঘটেছে।");
+    }
+  };
+
+  const handleApproveApplication = async (applicationId: string, status: "approved" | "rejected") => {
+    try {
+      const response = await fetch(`/api/admin/applications/${applicationId}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      });
+
+      if (response.ok) {
+        await fetchAdminData();
+        await fetchPosts();
+        if (currentUser) {
+          await loadUserSession(currentUser.uid);
+        }
+      } else {
+        const err = await response.json();
+        throw new Error(err.error || "অ্যাকশন সম্পন্ন করা যায়নি।");
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || "সার্ভার সংযোগ ব্যাহত হয়েছে।");
     }
   };
 
@@ -686,7 +715,11 @@ export default function App() {
             <nav className="flex flex-col gap-1.5">
               {menuItems.map((item) => {
                 const IconComponent = item.icon;
-                const isActive = activeNavView === item.id;
+                const isActive = item.id === "writer-panel"
+                  ? (activeNavView === "profile" && profileSection === "writer")
+                  : item.id === "profile"
+                  ? (activeNavView === "profile" && profileSection === "reader")
+                  : activeNavView === item.id;
                 return (
                   <button
                     key={item.id}
@@ -694,7 +727,12 @@ export default function App() {
                       if (item.id !== "home" && item.id !== "authors" && !currentUser) {
                         setIsAuthOpen(true);
                       } else {
-                        setActiveNavView(item.id);
+                        if (item.id === "writer-panel") {
+                          setActiveNavView("profile");
+                          setProfileSection("writer");
+                        } else {
+                          setActiveNavView(item.id);
+                        }
                         setSelectedAuthorForView(null); // Reset when navigating
                       }
                     }}
@@ -850,7 +888,11 @@ export default function App() {
           <div className="md:hidden flex items-center gap-2 overflow-x-auto bg-white border-b border-slate-200 p-2.5 scrollbar-none shrink-0 sticky top-16 z-35 shadow-2xs">
             {menuItems.map((item) => {
               const IconComponent = item.icon;
-              const isActive = activeNavView === item.id;
+              const isActive = item.id === "writer-panel"
+                ? (activeNavView === "profile" && profileSection === "writer")
+                : item.id === "profile"
+                ? (activeNavView === "profile" && profileSection === "reader")
+                : activeNavView === item.id;
               return (
                 <button
                   key={item.id}
@@ -858,7 +900,12 @@ export default function App() {
                     if (item.id !== "home" && item.id !== "authors" && !currentUser) {
                       setIsAuthOpen(true);
                     } else {
-                      setActiveNavView(item.id);
+                      if (item.id === "writer-panel") {
+                        setActiveNavView("profile");
+                        setProfileSection("writer");
+                      } else {
+                        setActiveNavView(item.id);
+                      }
                       setSelectedAuthorForView(null);
                     }
                   }}
@@ -1112,7 +1159,7 @@ export default function App() {
             ) : activeNavView === "profile" ? (
               /* --- MY PROFILE VIEW --- */
               <div className="max-w-3xl mx-auto">
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden mb-6">
                   <div className="h-32 bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 relative">
                     <div className="absolute -bottom-10 left-8">
                       <div className="w-20 h-20 rounded-2xl bg-white p-1 border-2 border-white shadow-md">
@@ -1137,92 +1184,202 @@ export default function App() {
                     </div>
 
                     {/* Bio Editor Section */}
-                    <div className="bg-slate-50 border border-slate-150 p-5 rounded-2xl mb-8">
-                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">আপনার পরিচিতি ও বায়োগ্রাফি</h3>
-                      {appSamples === "editing" ? (
-                        <div className="space-y-3">
-                          <input
-                            type="text"
-                            value={currentUser?.displayName || ""}
-                            onChange={(e) => {
-                              const updated = { ...currentUser!, displayName: e.target.value };
-                              setCurrentUser(updated);
-                            }}
-                            placeholder="আপনার নাম..."
-                            className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-violet-500/20 outline-hidden font-bold"
-                          />
-                          <textarea
-                            value={currentUser?.bio || ""}
-                            onChange={(e) => {
-                              const updated = { ...currentUser!, bio: e.target.value };
-                              setCurrentUser(updated);
-                            }}
-                            placeholder="আপনার বায়োগ্রাফি লিখুন..."
-                            className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-violet-500/20 outline-hidden min-h-[100px]"
-                          />
-                          <button
-                            onClick={async () => {
-                              try {
-                                const res = await fetch(`/api/users/${currentUser?.uid}`, {
+                    <div className="bg-slate-50 border border-slate-150 p-5 rounded-2xl mb-6">
+                      <div className="flex justify-between items-start gap-4">
+                        <p className="text-sm text-slate-600 italic leading-relaxed">
+                          "{currentUser?.bio || "কোনো বায়োগ্রাফি সেট করা নেই। 'এডিট বায়ো' বাটনে ক্লিক করে প্রোফাইল সাজাতে পারেন।"}"
+                        </p>
+                        <button
+                          id="edit-bio-btn"
+                          onClick={() => {
+                            const newBio = prompt("আপনার বায়োগ্রাফি লিখুন:", currentUser?.bio || "");
+                            if (newBio !== null) {
+                              const newName = prompt("আপনার নাম লিখুন:", currentUser?.displayName || "");
+                              if (newName !== null) {
+                                fetch(`/api/users/${currentUser?.uid}`, {
                                   method: "PUT",
                                   headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ displayName: currentUser?.displayName, bio: currentUser?.bio })
+                                  body: JSON.stringify({ displayName: newName || currentUser?.displayName, bio: newBio })
+                                }).then(res => {
+                                  if (res.ok) {
+                                    alert("প্রোফাইল সফলভাবে আপডেট হয়েছে!");
+                                    loadUserSession(currentUser!.uid);
+                                    fetchAdminData();
+                                  }
                                 });
-                                if (res.ok) {
-                                  alert("প্রোফাইল সফলভাবে আপডেট হয়েছে!");
-                                  setAppSamples(""); // Exit editing mode
-                                  fetchAdminData();
-                                }
-                              } catch (err) { console.error(err); }
-                            }}
-                            className="py-2 px-4 bg-violet-600 text-white rounded-xl text-xs font-bold hover:bg-violet-700 cursor-pointer transition-all"
-                          >
-                            সংরক্ষণ করুন (Save)
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex justify-between items-start gap-4">
-                          <p className="text-sm text-slate-600 italic leading-relaxed">
-                            "{currentUser?.bio || "কোনো বায়োগ্রাফি সেট করা নেই। 'এডিট বায়ো' বাটনে ক্লিক করে প্রোফাইল সাজাতে পারেন।"}"
-                          </p>
-                          <button
-                            onClick={() => setAppSamples("editing")}
-                            className="text-xs text-violet-600 font-bold hover:underline shrink-0"
-                          >
-                            এডিট বায়ো
-                          </button>
-                        </div>
-                      )}
+                              }
+                            }
+                          }}
+                          className="text-xs text-violet-600 font-bold hover:underline shrink-0 cursor-pointer"
+                        >
+                          এডিট প্রোফাইল
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Stats Dashboard */}
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">পাঠক পরিসংখ্যান (Stats Dashboard)</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center">
-                        <p className="text-2xl font-bold text-violet-600 font-mono">
-                          {currentUser?.bookmarkedPostIds.length || 0}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-bold mt-1.5">বুকমার্ককৃত লেখা</p>
-                      </div>
-                      <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center">
-                        <p className="text-2xl font-bold text-emerald-600 font-mono">
-                          {currentUser?.followingAuthors.length || 0}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-bold mt-1.5">অনুসৃত লেখক</p>
-                      </div>
-                      <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center">
-                        <p className="text-2xl font-bold text-orange-500 font-mono">
-                          {currentUser?.printBasketPostIds.length || 0}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-bold mt-1.5">বাস্কেটে রয়েছে</p>
-                      </div>
-                      <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center">
-                        <p className="text-2xl font-bold text-amber-500 font-mono">
-                          {currentUser?.coins || 0}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-bold mt-1.5">বর্তমান কয়েন</p>
-                      </div>
+                    {/* Reader / Writer Toggle Header */}
+                    <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-6">
+                      <button
+                        id="profile-toggle-reader"
+                        onClick={() => setProfileSection("reader")}
+                        className={`flex-1 py-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
+                          profileSection === "reader"
+                            ? "bg-white text-emerald-700 shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        📖 পাঠক অংশ (Reader Part)
+                      </button>
+                      <button
+                        id="profile-toggle-writer"
+                        onClick={() => setProfileSection("writer")}
+                        className={`flex-1 py-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
+                          profileSection === "writer"
+                            ? "bg-white text-orange-700 shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        ✍️ লেখক অংশ (Writer Part)
+                      </button>
                     </div>
+
+                    {profileSection === "reader" ? (
+                      <div className="space-y-6">
+                        {currentUser && (
+                          <ReaderPanel
+                            profile={currentUser}
+                            posts={posts}
+                            authors={adminData.users}
+                            onAction={handleAction}
+                            onOpenCoinsModal={() => setIsCoinsOpen(true)}
+                            onOpenPost={handleOpenPostReader}
+                            activeTab={readerTab}
+                            onTabChange={setReaderTab}
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {currentUser?.role === "writer" ? (
+                          <WriterPanel
+                            profile={currentUser}
+                            posts={posts}
+                            onOpenPost={handleOpenPostReader}
+                            onPublishPost={handlePublishPost}
+                            onWithdrawRequest={handleWithdrawRequest}
+                          />
+                        ) : (() => {
+                          const userApp = (adminData.writerApplications || []).find(
+                            (a) => a.userId === currentUser?.uid
+                          );
+                          if (userApp && userApp.status === "pending") {
+                            return (
+                              <div className="p-8 bg-amber-50 rounded-2xl border border-amber-200 text-center max-w-lg mx-auto">
+                                <Clock className="w-12 h-12 text-amber-500 mx-auto mb-3 animate-pulse" />
+                                <h3 className="text-sm font-bold text-amber-800">আবেদনটি পেন্ডিং অবস্থায় আছে</h3>
+                                <p className="text-xs text-amber-600 mt-2 leading-relaxed font-sans">
+                                  আপনার লেখক হওয়ার আবেদনটি সফলভাবে সাবমিট করা হয়েছে এবং অ্যাডমিন মূল্যায়নের জন্য পাঠানো হয়েছে। অনুমোদন সম্পন্ন হলে আপনার জন্য লেখক অংশটি সচল হয়ে যাবে।
+                                </p>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs max-w-xl mx-auto">
+                              <div className="text-center max-w-sm mx-auto mb-6">
+                                <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto mb-3">
+                                  <PenTool className="w-6 h-6" />
+                                </div>
+                                <h2 className="text-md font-serif font-bold text-slate-800">রিড-টু-প্রিন্ট লেখক প্রোগ্রাম</h2>
+                                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">আপনার অসাধারণ সাহিত্যকর্ম প্রকাশ করুন, পাঠকদের সাথে যুক্ত হোন এবং রয়্যালটি ও কয়েন আয় করুন।</p>
+                              </div>
+
+                              <form onSubmit={handleWriterApplicationSubmit} className="space-y-4">
+                                <div className="space-y-1.5">
+                                  <label className="text-xs font-bold text-slate-500 block">আপনার লেখার মূল ক্যাটাগরি</label>
+                                  <select
+                                    value={appCategory}
+                                    onChange={(e) => setAppCategory(e.target.value)}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-hidden text-slate-700 font-bold"
+                                  >
+                                    <option value="গল্প ও উপন্যাস">গল্প ও উপন্যাস (Fiction)</option>
+                                    <option value="কবিতা ও আবৃত্তি">কবিতা ও আবৃত্তি (Poetry)</option>
+                                    <option value="প্রবন্ধ ও কলাম">প্রবন্ধ ও কলাম (Essays / Columns)</option>
+                                    <option value="ইতিহাস ও দর্শন">ইতিহাস ও দর্শন (History / Philosophy)</option>
+                                  </select>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="text-xs font-bold text-slate-500 block">কেন আপনি রিড-টু-প্রিন্টে লিখতে চান?</label>
+                                  <textarea
+                                    placeholder="আপনার অনুপ্রেরণা বা কিছু বাক্য লিখুন..."
+                                    value={appMotivation}
+                                    onChange={(e) => setAppMotivation(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-500/20 outline-hidden min-h-[80px]"
+                                    required
+                                  />
+                                </div>
+
+                                {/* Sample Writing 1 */}
+                                <div className="space-y-3 bg-orange-50/40 p-4 rounded-xl border border-orange-100/50">
+                                  <h4 className="text-xs font-bold text-orange-700">নমুনা লেখা ১ (Sample Writing 1)</h4>
+                                  <div className="space-y-1.5">
+                                    <input
+                                      type="text"
+                                      placeholder="শিরোনাম (Title)"
+                                      value={sample1Title}
+                                      onChange={(e) => setSample1Title(e.target.value)}
+                                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-500/20 outline-hidden font-bold"
+                                      required
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <textarea
+                                      placeholder="লেখাটির মূল বিষয়বস্তু বা বিষয় (Content)..."
+                                      value={sample1Content}
+                                      onChange={(e) => setSample1Content(e.target.value)}
+                                      className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-500/20 outline-hidden min-h-[120px] font-serif"
+                                      required
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Sample Writing 2 */}
+                                <div className="space-y-3 bg-orange-50/40 p-4 rounded-xl border border-orange-100/50">
+                                  <h4 className="text-xs font-bold text-orange-700">নমুনা লেখা ২ (Sample Writing 2)</h4>
+                                  <div className="space-y-1.5">
+                                    <input
+                                      type="text"
+                                      placeholder="শিরোনাম (Title)"
+                                      value={sample2Title}
+                                      onChange={(e) => setSample2Title(e.target.value)}
+                                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-500/20 outline-hidden font-bold"
+                                      required
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <textarea
+                                      placeholder="লেখাটির মূল বিষয়বস্তু বা বিষয় (Content)..."
+                                      value={sample2Content}
+                                      onChange={(e) => setSample2Content(e.target.value)}
+                                      className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-500/20 outline-hidden min-h-[120px] font-serif"
+                                      required
+                                    />
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="submit"
+                                  className="w-full mt-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                  <PenTool className="w-4 h-4 shrink-0" />
+                                  ২টি নমুনাসহ আবেদন জমা দিন
+                                </button>
+                              </form>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1776,77 +1933,21 @@ export default function App() {
                 </div>
               </div>
             ) : activeNavView === "writer-panel" ? (
-              /* --- WRITER APPLICATION PANEL --- */
-              <div>
-                {currentUser?.role === "writer" ? (
-                  <div className="max-w-6xl mx-auto">
-                    <WriterPanel
-                      profile={currentUser!}
-                      posts={posts}
-                      onOpenPost={handleOpenPostReader}
-                      onPublishPost={handlePublishPost}
-                      onWithdrawRequest={handleWithdrawRequest}
-                    />
-                  </div>
-                ) : (
-                  <div className="max-w-xl mx-auto">
-                    <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-xs">
-                      <div className="text-center max-w-sm mx-auto mb-6">
-                        <div className="w-12 h-12 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center mx-auto mb-3">
-                          <PenTool className="w-6 h-6" />
-                        </div>
-                        <h2 className="text-lg font-serif font-bold text-slate-800">রিড-টু-প্রিন্ট লেখক প্রোগ্রাম</h2>
-                        <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">আপনার অসাধারণ সাহিত্যকর্ম প্রকাশ করুন, পাঠকদের সাথে যুক্ত হোন এবং রাজকীয় রয়্যালটি ও কয়েন আয় করুন।</p>
-                      </div>
-
-                      <form onSubmit={handleWriterApplicationSubmit} className="space-y-4">
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-500 block">আপনার লেখার মূল ক্যাটাগরি</label>
-                          <select
-                            value={appCategory}
-                            onChange={(e) => setAppCategory(e.target.value)}
-                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 transition-all outline-hidden text-slate-700"
-                          >
-                            <option value="গল্প ও উপন্যাস">গল্প ও উপন্যাস (Fiction)</option>
-                            <option value="কবিতা ও আবৃত্তি">কবিতা ও আবৃত্তি (Poetry)</option>
-                            <option value="প্রবন্ধ ও কলাম">প্রবন্ধ ও কলাম (Essays / Columns)</option>
-                            <option value="ইতিহাস ও দর্শন">ইতিহাস ও দর্শন (History / Philosophy)</option>
-                          </select>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-500 block">আপনার কাজের বিবরণ বা লিংক</label>
-                          <input
-                            type="text"
-                            placeholder="ফেসবুক পেজ, ব্লগ বা গুগল ড্রাইভ লিংক"
-                            value={appSamples}
-                            onChange={(e) => setAppSamples(e.target.value)}
-                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-pink-500/20 outline-hidden"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-500 block">কেন আপনি রিড-টু-প্রিন্টে লিখতে চান?</label>
-                          <textarea
-                            placeholder="আপনার অনুপ্রেরণা বা কিছু বাক্য লিখুন..."
-                            value={appMotivation}
-                            onChange={(e) => setAppMotivation(e.target.value)}
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-pink-500/20 outline-hidden min-h-[80px]"
-                            required
-                          />
-                        </div>
-
-                        <button
-                          type="submit"
-                          className="w-full mt-4 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <PenTool className="w-4 h-4 shrink-0" />
-                          আবেদন জমা দিন ও লেখক প্যানেল সচল করুন
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-                )}
+              /* --- REDIRECT / WRITER VIEW --- */
+              <div className="max-w-3xl mx-auto">
+                <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center shadow-xs">
+                  <PenTool className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-slate-700">আপনাকে প্রোফাইলের লেখক অংশে নিয়ে যাওয়া হচ্ছে...</p>
+                  <button 
+                    onClick={() => {
+                      setActiveNavView("profile");
+                      setProfileSection("writer");
+                    }}
+                    className="mt-3 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-all"
+                  >
+                    এখানে ক্লিক করুন
+                  </button>
+                </div>
               </div>
             ) : (
               /* --- ADMIN PANEL VIEW --- */
@@ -1855,6 +1956,7 @@ export default function App() {
                   profile={currentUser!}
                   adminData={adminData}
                   onApproveWithdraw={handleApproveWithdraw}
+                  onApproveApplication={handleApproveApplication}
                   onRefreshAdminData={fetchAdminData}
                 />
               </div>

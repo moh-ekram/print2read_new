@@ -155,16 +155,22 @@ const initialData = {
 // Load or Initialize Database
 function getDatabase() {
   if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2), "utf-8");
-    return initialData;
+    const seeded = { ...initialData, writerApplications: [] };
+    fs.writeFileSync(DB_FILE, JSON.stringify(seeded, null, 2), "utf-8");
+    return seeded;
   }
   try {
     const content = fs.readFileSync(DB_FILE, "utf-8");
-    return JSON.parse(content);
+    const db = JSON.parse(content);
+    if (!db.writerApplications) {
+      db.writerApplications = [];
+    }
+    return db;
   } catch (e) {
     console.error("Database read error. Re-initializing.", e);
-    fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2), "utf-8");
-    return initialData;
+    const seeded = { ...initialData, writerApplications: [] };
+    fs.writeFileSync(DB_FILE, JSON.stringify(seeded, null, 2), "utf-8");
+    return seeded;
   }
 }
 
@@ -438,6 +444,7 @@ app.get("/api/admin/data", (req, res) => {
   const db = getDatabase();
   res.json({
     withdrawRequests: db.withdrawRequests,
+    writerApplications: db.writerApplications || [],
     users: db.users.map((u: any) => ({
       uid: u.uid,
       displayName: u.displayName,
@@ -511,6 +518,106 @@ app.post("/api/admin/action", (req, res) => {
 
   saveDatabase(db);
   res.json({ success: true, withdrawRequests: db.withdrawRequests });
+});
+
+// Create a new writer application
+app.post("/api/admin/applications", (req, res) => {
+  const { userId, userEmail, userDisplayName, category, motivation, sample1Title, sample1Content, sample2Title, sample2Content } = req.body;
+  if (!userId || !userEmail || !sample1Title || !sample1Content || !sample2Title || !sample2Content) {
+    return res.status(400).json({ error: "Missing required details (UserId, Email, Sample 1, Sample 2 are required)" });
+  }
+
+  const db = getDatabase();
+  
+  // Check if there's already a pending or approved application
+  const existingApp = (db.writerApplications || []).find((a: any) => a.userId === userId && a.status === "pending");
+  if (existingApp) {
+    return res.status(400).json({ error: "আপনার একটি আবেদন ইতিপূর্বে জমা দেওয়া হয়েছে এবং তা অনুমোদনের অপেক্ষায় রয়েছে।" });
+  }
+
+  const newApp = {
+    id: "app-" + Date.now(),
+    userId,
+    userEmail,
+    userDisplayName: userDisplayName || userEmail.split("@")[0],
+    category: category || "প্রবন্ধ ও কলাম",
+    motivation: motivation || "",
+    sample1Title,
+    sample1Content,
+    sample2Title,
+    sample2Content,
+    status: "pending",
+    timestamp: new Date().toISOString()
+  };
+
+  if (!db.writerApplications) {
+    db.writerApplications = [];
+  }
+  db.writerApplications.unshift(newApp);
+  saveDatabase(db);
+  res.status(201).json({ success: true, application: newApp, writerApplications: db.writerApplications });
+});
+
+// Admin action on writer application
+app.post("/api/admin/applications/:id/action", (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body; // "approved" | "rejected"
+  if (!status) {
+    return res.status(400).json({ error: "Missing status field" });
+  }
+
+  const db = getDatabase();
+  const appIdx = (db.writerApplications || []).findIndex((a: any) => a.id === id);
+  if (appIdx === -1) {
+    return res.status(404).json({ error: "Application not found" });
+  }
+
+  const application = db.writerApplications[appIdx];
+  application.status = status;
+
+  if (status === "approved") {
+    // 1. Update user role to "writer"
+    const user = db.users.find((u: any) => u.uid === application.userId);
+    if (user) {
+      user.role = "writer";
+      user.bio = application.motivation || user.bio || "রেজিস্টার্ড লেখক।";
+    }
+
+    // 2. Automatically publish the 2 sample writings as real posts under this author!
+    const newPost1 = {
+      id: "post-" + Date.now() + "-1",
+      title: application.sample1Title,
+      excerpt: application.sample1Content.substring(0, 100) + "...",
+      content: application.sample1Content,
+      authorId: application.userId,
+      authorName: application.userDisplayName || user?.displayName || "Unknown Writer",
+      viewCount: 0,
+      addToPrintCount: 0,
+      priceCoins: 10,
+      priceMoney: 20,
+      createdAt: new Date().toISOString()
+    };
+
+    const newPost2 = {
+      id: "post-" + Date.now() + "-2",
+      title: application.sample2Title,
+      excerpt: application.sample2Content.substring(0, 100) + "...",
+      content: application.sample2Content,
+      authorId: application.userId,
+      authorName: application.userDisplayName || user?.displayName || "Unknown Writer",
+      viewCount: 0,
+      addToPrintCount: 0,
+      priceCoins: 10,
+      priceMoney: 20,
+      createdAt: new Date().toISOString()
+    };
+
+    db.posts.unshift(newPost1);
+    db.posts.unshift(newPost2);
+  }
+
+  saveDatabase(db);
+  res.json({ success: true, writerApplications: db.writerApplications, posts: db.posts });
 });
 
 // ---------------------- VITE SETUP ----------------------
