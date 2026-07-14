@@ -5,6 +5,7 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
+import { getFirestore, Firestore, doc, getDocFromServer } from "firebase/firestore";
 
 // Real Firebase Configuration structure using VITE_ prefix environment variables
 const env = (import.meta as any).env || {};
@@ -27,12 +28,28 @@ const isFirebaseConfigured = !!(
 
 let firebaseApp;
 let firebaseAuth: Auth | null = null;
+let firebaseDb: Firestore | null = null;
 
 if (isFirebaseConfigured) {
   try {
     firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     firebaseAuth = getAuth(firebaseApp);
+    firebaseDb = getFirestore(firebaseApp);
     console.log("Firebase initialized successfully with real configuration.");
+
+    // Validate connection to Firestore as required by platform constraints
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(firebaseDb!, "test", "connection"));
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("the client is offline")) {
+          console.error("Please check your Firebase configuration: Client is offline.");
+        } else {
+          console.log("Firestore connection test completed (expected if database is empty/unconfigured):", error);
+        }
+      }
+    };
+    testConnection();
   } catch (error) {
     console.warn("Failed to initialize Firebase with real credentials, falling back to Sandbox:", error);
   }
@@ -40,4 +57,51 @@ if (isFirebaseConfigured) {
   console.log("No Firebase config found. Running in high-fidelity local Sandbox mode.");
 }
 
-export { firebaseAuth, isFirebaseConfigured };
+export enum OperationType {
+  CREATE = "create",
+  UPDATE = "update",
+  DELETE = "delete",
+  LIST = "list",
+  GET = "get",
+  WRITE = "write",
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: firebaseAuth?.currentUser?.uid,
+      email: firebaseAuth?.currentUser?.email,
+      emailVerified: firebaseAuth?.currentUser?.emailVerified,
+      isAnonymous: firebaseAuth?.currentUser?.isAnonymous,
+      tenantId: firebaseAuth?.currentUser?.tenantId,
+      providerInfo: firebaseAuth?.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error("Firestore Error: ", JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+export { firebaseAuth, firebaseDb, isFirebaseConfigured };

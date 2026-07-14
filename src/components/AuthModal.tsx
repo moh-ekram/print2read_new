@@ -5,6 +5,7 @@
 
 import React, { useState } from "react";
 import { firebaseAuth, isFirebaseConfigured } from "../lib/firebase";
+import { getUserProfileFromFirestore, saveUserProfileToFirestore } from "../lib/firestoreService";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { LogIn, UserPlus, Shield, Sparkles, User, BookOpen } from "lucide-react";
 import { UserProfile, UserRole } from "../types";
@@ -49,20 +50,22 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         let userCredential;
         if (isSignUp) {
           userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
-          // Register with local backend to sync profile with custom role
-          const response = await fetch(`/api/users/${userCredential.user.uid}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ displayName, role }),
-          });
-          const profile = await response.json();
-          onSuccess(profile);
+          // Register with direct Firestore
+          const profile = await saveUserProfileToFirestore(userCredential.user.uid, { displayName, role });
+          if (profile) {
+            onSuccess(profile as any);
+          } else {
+            throw new Error("ফায়ারস্টোরে ইউজার প্রোফাইল ক্রিয়েট করতে ব্যর্থ হয়েছে।");
+          }
         } else {
           userCredential = await signInWithEmailAndPassword(firebaseAuth, email, password);
-          // Fetch synced profile from backend
-          const response = await fetch(`/api/users/${userCredential.user.uid}`);
-          const profile = await response.json();
-          onSuccess(profile);
+          // Fetch synced profile from direct Firestore
+          const profile = await getUserProfileFromFirestore(userCredential.user.uid, { displayName: userCredential.user.displayName || "User" });
+          if (profile) {
+            onSuccess(profile as any);
+          } else {
+            throw new Error("ফায়ারস্টোর থেকে প্রোফাইল রিড করতে ব্যর্থ হয়েছে।");
+          }
         }
       } else {
         // --- HIGH FIDELITY SANDBOX AUTHENTICATION ---
@@ -111,32 +114,23 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         const userCredential = await signInWithPopup(firebaseAuth, provider);
         const { uid, displayName: googleName } = userCredential.user;
 
-        // Try to fetch existing user profile
-        const response = await fetch(`/api/users/${uid}`);
-        let profile = null;
-        if (response.ok) {
-          try {
-            profile = await response.json();
-          } catch (e) {
-            console.error("No JSON profile back, will create new", e);
-          }
-        }
+        // Try to fetch existing user profile from Firestore
+        let profile = await getUserProfileFromFirestore(uid);
 
-        // Create or update user on backend
+        // Create or update user on Firestore
         const finalRole = role || "reader";
         const finalName = displayName || googleName || "Google User";
-        const createResponse = await fetch(`/api/users/${uid}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            displayName: finalName,
-            role: profile?.role || finalRole,
-            bio: profile?.bio || "স্বাগতম গুগল অ্যাকাউন্টের মাধ্যমে রিড-টু-প্রিন্ট অ্যাপ্লিকেশনে।"
-          })
+        const updatedProfile = await saveUserProfileToFirestore(uid, {
+          displayName: finalName,
+          role: profile?.role || finalRole,
+          bio: profile?.bio || "স্বাগতম গুগল অ্যাকাউন্টের মাধ্যমে রিড-টু-প্রিন্ট অ্যাপ্লিকেশনে।"
         });
-        profile = await createResponse.json();
 
-        onSuccess(profile);
+        if (updatedProfile) {
+          onSuccess(updatedProfile as any);
+        } else {
+          throw new Error("গুগল প্রোফাইল ফায়ারস্টোরে সেভ করতে ব্যর্থ হয়েছে।");
+        }
       } else {
         // Fallback for Sandbox mode (simulate Google Sign-In)
         const mockUid = `google-sandbox-${role}`;

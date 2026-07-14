@@ -7,6 +7,18 @@ import React, { useState, useEffect } from "react";
 import { UserProfile, Post, CoinTransaction, UserRole } from "./types";
 import AuthModal from "./components/AuthModal";
 import { firebaseAuth, isFirebaseConfigured } from "./lib/firebase";
+import { 
+  fetchPostsFromFirestore, 
+  getUserProfileFromFirestore, 
+  saveUserProfileToFirestore, 
+  createPostInFirestore, 
+  editPostInFirestore, 
+  handleUserActionInFirestore, 
+  fetchTransactionsFromFirestore, 
+  createWithdrawRequestInFirestore, 
+  handleWithdrawActionInFirestore, 
+  fetchAdminDataFromFirestore 
+} from "./lib/firestoreService";
 import CoinsModal from "./components/CoinsModal";
 import ReaderPanel from "./components/ReaderPanel";
 import WriterPanel from "./components/WriterPanel";
@@ -110,13 +122,23 @@ export default function App() {
 
   const loadUserSession = async (uid: string) => {
     try {
-      const response = await fetch(`/api/users/${uid}`);
-      if (response.ok) {
-        const profile = await response.json();
-        setCurrentUser(profile);
-        setProfileView(profile.role);
-        setProfileSection(profile.role === "writer" ? "writer" : "reader");
-        fetchTransactions(profile.uid);
+      if (isFirebaseConfigured) {
+        const profile = await getUserProfileFromFirestore(uid);
+        if (profile) {
+          setCurrentUser(profile as any);
+          setProfileView(profile.role);
+          setProfileSection(profile.role === "writer" ? "writer" : "reader");
+          fetchTransactions(profile.uid);
+        }
+      } else {
+        const response = await fetch(`/api/users/${uid}`);
+        if (response.ok) {
+          const profile = await response.json();
+          setCurrentUser(profile);
+          setProfileView(profile.role);
+          setProfileSection(profile.role === "writer" ? "writer" : "reader");
+          fetchTransactions(profile.uid);
+        }
       }
     } catch (e) {
       console.error("Failed to load user session", e);
@@ -126,10 +148,15 @@ export default function App() {
   const fetchPosts = async () => {
     setLoadingPosts(true);
     try {
-      const response = await fetch("/api/posts");
-      if (response.ok) {
-        const data = await response.json();
+      if (isFirebaseConfigured) {
+        const data = await fetchPostsFromFirestore();
         setPosts(data);
+      } else {
+        const response = await fetch("/api/posts");
+        if (response.ok) {
+          const data = await response.json();
+          setPosts(data);
+        }
       }
     } catch (e) {
       console.error("Failed to fetch posts", e);
@@ -140,10 +167,15 @@ export default function App() {
 
   const fetchTransactions = async (uid: string) => {
     try {
-      const response = await fetch(`/api/transactions/${uid}`);
-      if (response.ok) {
-        const data = await response.json();
+      if (isFirebaseConfigured) {
+        const data = await fetchTransactionsFromFirestore(uid);
         setTransactions(data);
+      } else {
+        const response = await fetch(`/api/transactions/${uid}`);
+        if (response.ok) {
+          const data = await response.json();
+          setTransactions(data);
+        }
       }
     } catch (e) {
       console.error("Failed to fetch transactions", e);
@@ -152,10 +184,15 @@ export default function App() {
 
   const fetchAdminData = async () => {
     try {
-      const response = await fetch("/api/admin/data");
-      if (response.ok) {
-        const data = await response.json();
+      if (isFirebaseConfigured) {
+        const data = await fetchAdminDataFromFirestore();
         setAdminData(data);
+      } else {
+        const response = await fetch("/api/admin/data");
+        if (response.ok) {
+          const data = await response.json();
+          setAdminData(data);
+        }
       }
     } catch (e) {
       console.error("Failed to fetch admin data", e);
@@ -190,33 +227,55 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`/api/users/${currentUser.uid}/action`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actionType, postId, authorId }),
-      });
+      if (isFirebaseConfigured) {
+        const result = await handleUserActionInFirestore(currentUser.uid, actionType, { postId, authorId });
+        if (result && result.success) {
+          if (result.user) {
+            setCurrentUser(result.user as any);
+          }
+          // Refresh listings and metrics
+          fetchPosts();
+          fetchTransactions(currentUser.uid);
+          fetchAdminData();
 
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentUser(data.user);
-        
-        // Refresh local listings and metrics
-        fetchPosts();
-        fetchTransactions(currentUser.uid);
-        fetchAdminData();
-
-        // If currently viewing the selected post, update its views/counters locally
-        if (selectedPost && postId === selectedPost.id) {
-          const updatedPost = data.posts?.find((p: Post) => p.id === postId) || selectedPost;
-          setSelectedPost(updatedPost);
+          // If currently viewing the selected post, update its views/counters locally
+          if (selectedPost && postId === selectedPost.id) {
+            const allPosts = await fetchPostsFromFirestore();
+            const updatedPost = allPosts.find((p: any) => p.id === postId) || selectedPost;
+            setSelectedPost(updatedPost);
+          }
+        } else {
+          alert("অ্যাকশন সম্পন্ন করা যায়নি।");
         }
       } else {
-        const err = await response.json();
-        alert(err.error || "অ্যাকশন সম্পন্ন করা যায়নি।");
+        const response = await fetch(`/api/users/${currentUser.uid}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actionType, postId, authorId }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentUser(data.user);
+          
+          // Refresh local listings and metrics
+          fetchPosts();
+          fetchTransactions(currentUser.uid);
+          fetchAdminData();
+
+          // If currently viewing the selected post, update its views/counters locally
+          if (selectedPost && postId === selectedPost.id) {
+            const updatedPost = data.posts?.find((p: Post) => p.id === postId) || selectedPost;
+            setSelectedPost(updatedPost);
+          }
+        } else {
+          const err = await response.json();
+          alert(err.error || "অ্যাকশন সম্পন্ন করা যায়নি।");
+        }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("সার্ভার সংযোগ ব্যাহত হয়েছে। পুনরায় চেষ্টা করুন।");
+      alert(e.message || "সার্ভার সংযোগ ব্যাহত হয়েছে। পুনরায় চেষ্টা করুন।");
     }
   };
 
@@ -230,27 +289,46 @@ export default function App() {
   ) => {
     if (!currentUser) return;
     try {
-      const response = await fetch("/api/posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      if (isFirebaseConfigured) {
+        const newPost = await createPostInFirestore({
           title,
           excerpt,
           content,
-          priceCoins,
-          priceMoney,
           authorId: currentUser.uid,
-          authorName: currentUser.displayName
-        })
-      });
-
-      if (response.ok) {
-        alert("আপনার লেখাটি সফলভাবে প্রকাশিত হয়েছে!");
-        fetchPosts();
-        fetchAdminData();
+          authorName: currentUser.displayName,
+          priceCoins,
+          priceMoney
+        });
+        if (newPost) {
+          alert("আপনার লেখাটি সফলভাবে প্রকাশিত হয়েছে!");
+          fetchPosts();
+          fetchAdminData();
+        } else {
+          alert("লেখা প্রকাশ করতে ব্যর্থ হয়েছে।");
+        }
       } else {
-        const err = await response.json();
-        alert(err.error || "লেখা প্রকাশ করতে ব্যর্থ হয়েছে।");
+        const response = await fetch("/api/posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            excerpt,
+            content,
+            priceCoins,
+            priceMoney,
+            authorId: currentUser.uid,
+            authorName: currentUser.displayName
+          })
+        });
+
+        if (response.ok) {
+          alert("আপনার লেখাটি সফলভাবে প্রকাশিত হয়েছে!");
+          fetchPosts();
+          fetchAdminData();
+        } else {
+          const err = await response.json();
+          alert(err.error || "লেখা প্রকাশ করতে ব্যর্থ হয়েছে।");
+        }
       }
     } catch (e) {
       console.error(e);
@@ -267,21 +345,33 @@ export default function App() {
     priceMoney: number
   ) => {
     try {
-      const response = await fetch(`/api/posts/${postId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, excerpt, content, priceCoins, priceMoney })
-      });
-
-      if (response.ok) {
-        const updated = await response.json();
-        setSelectedPost(updated);
-        fetchPosts();
-        fetchAdminData();
-        alert("লেখাটি সফলভাবে আপডেট করা হয়েছে।");
+      if (isFirebaseConfigured) {
+        const updated = await editPostInFirestore(postId, { title, excerpt, content, priceCoins, priceMoney });
+        if (updated) {
+          setSelectedPost(updated);
+          fetchPosts();
+          fetchAdminData();
+          alert("লেখাটি সফলভাবে আপডেট করা হয়েছে।");
+        } else {
+          alert("আপডেট ব্যর্থ হয়েছে।");
+        }
       } else {
-        const err = await response.json();
-        alert(err.error || "আপডেট ব্যর্থ হয়েছে।");
+        const response = await fetch(`/api/posts/${postId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, excerpt, content, priceCoins, priceMoney })
+        });
+
+        if (response.ok) {
+          const updated = await response.json();
+          setSelectedPost(updated);
+          fetchPosts();
+          fetchAdminData();
+          alert("লেখাটি সফলভাবে আপডেট করা হয়েছে।");
+        } else {
+          const err = await response.json();
+          alert(err.error || "আপডেট ব্যর্থ হয়েছে।");
+        }
       }
     } catch (e) {
       console.error(e);
@@ -295,45 +385,73 @@ export default function App() {
     accountNumber: string
   ) => {
     if (!currentUser) return;
-    const response = await fetch("/api/admin/withdraw", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: currentUser.uid,
-        userEmail: currentUser.email,
+    if (isFirebaseConfigured) {
+      const result = await createWithdrawRequestInFirestore(
+        currentUser.uid,
+        currentUser.email,
         amount,
         paymentMethod,
         accountNumber
-      })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      setCurrentUser(data.user);
-      fetchAdminData();
+      );
+      if (result && result.success) {
+        await loadUserSession(currentUser.uid);
+        await fetchAdminData();
+      } else {
+        throw new Error("উইথড্র সম্পন্ন করা যায়নি।");
+      }
     } else {
-      const err = await response.json();
-      throw new Error(err.error || "উইথড্র সম্পন্ন করা যায়নি।");
+      const response = await fetch("/api/admin/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUser.uid,
+          userEmail: currentUser.email,
+          amount,
+          paymentMethod,
+          accountNumber
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentUser(data.user);
+        fetchAdminData();
+      } else {
+        const err = await response.json();
+        throw new Error(err.error || "উইথড্র সম্পন্ন করা যায়নি।");
+      }
     }
   };
 
   // Admin approving/rejecting a payout
   const handleApproveWithdraw = async (requestId: string, status: "approved" | "rejected") => {
-    const response = await fetch("/api/admin/action", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestId, status })
-    });
-
-    if (response.ok) {
-      fetchAdminData();
-      // If admin was logged in, reload current wallet balance if they are connected
-      if (currentUser) {
-        loadUserSession(currentUser.uid);
+    if (isFirebaseConfigured) {
+      const result = await handleWithdrawActionInFirestore(requestId, status);
+      if (result && result.success) {
+        fetchAdminData();
+        if (currentUser) {
+          loadUserSession(currentUser.uid);
+        }
+      } else {
+        throw new Error("অ্যাকশন সম্পন্ন করা যায়নি।");
       }
     } else {
-      const err = await response.json();
-      throw new Error(err.error || "অ্যাকশন সম্পন্ন করা যায়নি।");
+      const response = await fetch("/api/admin/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, status })
+      });
+
+      if (response.ok) {
+        fetchAdminData();
+        // If admin was logged in, reload current wallet balance if they are connected
+        if (currentUser) {
+          loadUserSession(currentUser.uid);
+        }
+      } else {
+        const err = await response.json();
+        throw new Error(err.error || "অ্যাকশন সম্পন্ন করা যায়নি।");
+      }
     }
   };
 
@@ -341,22 +459,37 @@ export default function App() {
     e.preventDefault();
     if (!currentUser) return;
     try {
-      const response = await fetch(`/api/users/${currentUser.uid}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      if (isFirebaseConfigured) {
+        const updated = await saveUserProfileToFirestore(currentUser.uid, {
           role: "writer",
           bio: appMotivation || currentUser.bio || "লেখক হিসেবে স্বাগতম রিড-টু-প্রিন্ট অ্যাপ্লিকেশনে।"
-        })
-      });
-      if (response.ok) {
-        const updated = await response.json();
-        setCurrentUser(updated);
-        alert("অভিনন্দন! আপনার লেখক আবেদন অনুমোদিত হয়েছে এবং আপনি এখন একজন রেজিস্টার্ড লেখক।");
-        setActiveNavView("writer-panel");
-        fetchAdminData();
+        });
+        if (updated) {
+          setCurrentUser(updated as any);
+          alert("অভিনন্দন! আপনার লেখক আবেদন অনুমোদিত হয়েছে এবং আপনি এখন একজন রেজিস্টার্ড লেখক।");
+          setActiveNavView("writer-panel");
+          fetchAdminData();
+        } else {
+          alert("আবেদন সাবমিট করতে ত্রুটি হয়েছে।");
+        }
       } else {
-        alert("আবেদন সাবমিট করতে ত্রুটি হয়েছে।");
+        const response = await fetch(`/api/users/${currentUser.uid}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            role: "writer",
+            bio: appMotivation || currentUser.bio || "লেখক হিসেবে স্বাগতম রিড-টু-প্রিন্ট অ্যাপ্লিকেশনে।"
+          })
+        });
+        if (response.ok) {
+          const updated = await response.json();
+          setCurrentUser(updated);
+          alert("অভিনন্দন! আপনার লেখক আবেদন অনুমোদিত হয়েছে এবং আপনি এখন একজন রেজিস্টার্ড লেখক।");
+          setActiveNavView("writer-panel");
+          fetchAdminData();
+        } else {
+          alert("আবেদন সাবমিট করতে ত্রুটি হয়েছে।");
+        }
       }
     } catch (e) {
       console.error(e);
@@ -368,13 +501,19 @@ export default function App() {
     setSelectedPost(post);
     // Real view log
     try {
-      await fetch(`/api/users/${currentUser?.uid || "anonymous"}/action`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actionType: "read", postId: post.id })
-      });
-      fetchPosts();
-      fetchAdminData();
+      if (isFirebaseConfigured) {
+        await handleUserActionInFirestore(currentUser?.uid || "anonymous", "read", { postId: post.id });
+        fetchPosts();
+        fetchAdminData();
+      } else {
+        await fetch(`/api/users/${currentUser?.uid || "anonymous"}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actionType: "read", postId: post.id })
+        });
+        fetchPosts();
+        fetchAdminData();
+      }
     } catch (e) {
       console.error(e);
     }
