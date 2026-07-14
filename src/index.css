@@ -28,7 +28,12 @@
   --color-brand-purple-600: #9333ea;
   --color-brand-purple-700: #7e22ce;
 
-  --color-brand-dark: #1e1e24;
+  --color-brand-deep-teal: #575756;
+  --color-brand-soft-teal: #8DCBBA;
+  --color-brand-amber: #E5771E;
+  --color-brand-emerald: #10b981;
+
+  --color-brand-dark: #575756;
   --color-brand-soft-bg: #f8fafc;
 }
 

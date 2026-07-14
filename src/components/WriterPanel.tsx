@@ -5,7 +5,7 @@
 
 import React, { useState } from "react";
 import { Post, UserProfile } from "../types";
-import { Sparkles, FileSpreadsheet, PlusCircle, Edit, Eye, ShoppingBag, Coins, DollarSign, PenTool } from "lucide-react";
+import { FileSpreadsheet, PlusCircle, Edit, ShoppingBag, Coins, DollarSign, PenTool } from "lucide-react";
 import FacebookPostBox from "./FacebookPostBox";
 
 interface WriterPanelProps {
@@ -92,18 +92,18 @@ export default function WriterPanel({
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">মোট ভিউ (ভিউ কাউন্ট)</p>
-          <p className="text-2xl font-bold font-mono text-emerald-600 mt-1">{totalViews} বার</p>
+          <p className="text-2xl font-bold font-mono text-brand-soft-teal mt-1">{totalViews} বার</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">মোট অ্যাড-টু-প্রিন্ট</p>
-          <p className="text-2xl font-bold font-mono text-orange-500 mt-1">{totalPrints} বার</p>
+          <p className="text-2xl font-bold font-mono text-brand-amber mt-1">{totalPrints} বার</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">মোট অর্জিত কয়েন ও টাকা</p>
           <div className="mt-1 font-mono leading-tight">
-            <span className="text-base font-bold text-orange-500">{totalCoinsEarned} CC</span>
+            <span className="text-base font-bold text-brand-amber">{totalCoinsEarned} CC</span>
             <span className="text-xs text-slate-300 mx-1.5">|</span>
-            <span className="text-base font-bold text-violet-600">৳ {totalMoneyEarned}</span>
+            <span className="text-base font-bold text-brand-deep-teal">৳ {totalMoneyEarned}</span>
           </div>
         </div>
       </div>
@@ -114,7 +114,7 @@ export default function WriterPanel({
       {/* Writer Info & Action Bar */}
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <PenTool className="w-5 h-5 text-orange-500 shrink-0" />
+          <PenTool className="w-5 h-5 text-brand-amber shrink-0" />
           <div>
             <h3 className="text-sm font-bold text-slate-700 leading-none">লেখক কন্ট্রোল ড্যাশবোর্ড</h3>
             <p className="text-[11px] text-slate-400 mt-1">আপনার লেখার পারফরম্যান্স রিয়েল-টাইমে ট্র্যাক করুন</p>
@@ -123,7 +123,7 @@ export default function WriterPanel({
         <button
           id="toggle-add-post-form"
           onClick={() => setShowAddForm(!showAddForm)}
-          className="w-full sm:w-auto py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+          className="w-full sm:w-auto py-2 px-4 bg-brand-deep-teal hover:bg-brand-deep-teal/90 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
         >
           <PlusCircle className="w-4 h-4" />
           {showAddForm ? "ড্যাশবোর্ডে ফিরুন" : "নতুন লেখা প্রকাশ করুন"}
@@ -134,7 +134,7 @@ export default function WriterPanel({
       {showAddForm ? (
         <form onSubmit={handlePublish} className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-md space-y-4">
           <h3 className="text-base font-bold text-slate-700 flex items-center gap-1.5 pb-2 border-b border-slate-100">
-            <PenTool className="w-5 h-5 text-brand-green-600" />
+            <PenTool className="w-5 h-5 text-brand-soft-teal" />
             নতুন লেখা তৈরির ফরম
           </h3>
 
@@ -146,7 +146,7 @@ export default function WriterPanel({
               placeholder="আকর্ষণীয় ও তথ্যবহুল শিরোনাম দিন"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-green-500/20 focus:border-brand-green-500 transition-all font-serif font-bold text-slate-800"
+              className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-soft-teal/20 focus:border-brand-soft-teal transition-all font-serif font-bold text-slate-800"
             />
           </div>
 
@@ -158,7 +158,7 @@ export default function WriterPanel({
               placeholder="পাঠকদের আকৃষ্ট করতে এক বা দুই লাইনের পরিচিতি দিন"
               value={excerpt}
               onChange={(e) => setExcerpt(e.target.value)}
-              className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-green-500/20 focus:border-brand-green-500 transition-all text-slate-600"
+              className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-soft-teal/20 focus:border-brand-soft-teal transition-all text-slate-600"
             />
           </div>
 
@@ -170,7 +170,7 @@ export default function WriterPanel({
               placeholder="এখানে আপনার সম্পূর্ণ লেখা বা প্রবন্ধটি গুছিয়ে লিখুন..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-green-500/20 focus:border-brand-green-500 transition-all font-serif leading-relaxed text-slate-700"
+              className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-soft-teal/20 focus:border-brand-soft-teal transition-all font-serif leading-relaxed text-slate-700"
             />
           </div>
 
@@ -178,7 +178,7 @@ export default function WriterPanel({
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">কয়েন মূল্য (CC Price)</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-brand-orange-500 font-semibold text-xs">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-brand-amber font-semibold text-xs">
                   CC
                 </span>
                 <input
@@ -186,7 +186,7 @@ export default function WriterPanel({
                   type="number"
                   value={priceCoins}
                   onChange={(e) => setPriceCoins(Math.max(0, Number(e.target.value)))}
-                  className="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-green-500/20"
+                  className="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-soft-teal/20"
                 />
               </div>
             </div>
@@ -194,7 +194,7 @@ export default function WriterPanel({
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">টাকা মূল্য (BDT Price)</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-brand-purple-600 font-semibold text-xs">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-brand-deep-teal font-semibold text-xs">
                   ৳
                 </span>
                 <input
@@ -202,7 +202,7 @@ export default function WriterPanel({
                   type="number"
                   value={priceMoney}
                   onChange={(e) => setPriceMoney(Math.max(0, Number(e.target.value)))}
-                  className="w-full pl-8 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-green-500/20"
+                  className="w-full pl-8 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-soft-teal/20"
                 />
               </div>
             </div>
@@ -212,7 +212,7 @@ export default function WriterPanel({
             <button
               id="submit-publish-post"
               type="submit"
-              className="w-full py-3 bg-brand-green-600 hover:bg-brand-green-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3 bg-brand-deep-teal hover:bg-brand-deep-teal/95 text-white font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <PenTool className="w-4 h-4" />
               লেখাটি প্রকাশ করুন (Publish Now)
@@ -224,7 +224,7 @@ export default function WriterPanel({
           {/* Excel Sheet Style Grid */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
             <div className="flex items-center gap-2 mb-4">
-              <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+              <FileSpreadsheet className="w-5 h-5 text-brand-soft-teal" />
               <h3 className="text-sm font-bold text-slate-700">রিয়েল-টাইম পারফরম্যান্স গ্রিড (Excel Sheet Table)</h3>
             </div>
 
@@ -261,14 +261,14 @@ export default function WriterPanel({
                           <td className="px-4 py-3 text-left border-r border-slate-200 min-w-[250px]">
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] text-slate-400 font-mono font-medium w-5 shrink-0">{idx + 1}</span>
-                              <span className="font-serif font-bold text-slate-700 group-hover:text-violet-600 transition-colors text-sm">
+                              <span className="font-serif font-bold text-slate-700 group-hover:text-brand-deep-teal transition-colors text-sm">
                                 {post.title}
                               </span>
                             </div>
                           </td>
 
                           {/* Print Count */}
-                          <td className="px-4 py-3 text-center border-r border-slate-200 font-bold font-mono text-xs text-orange-500">
+                          <td className="px-4 py-3 text-center border-r border-slate-200 font-bold font-mono text-xs text-brand-amber">
                             {post.addToPrintCount} বার
                           </td>
 
@@ -278,12 +278,12 @@ export default function WriterPanel({
                           </td>
 
                           {/* Coin Earnings */}
-                          <td className="px-4 py-3 text-center border-r border-slate-200 font-bold font-mono text-xs text-amber-600">
+                          <td className="px-4 py-3 text-center border-r border-slate-200 font-bold font-mono text-xs text-brand-amber">
                             {postCoins} CC
                           </td>
 
                           {/* Money/BDT Earnings */}
-                          <td className="px-4 py-3 text-center border-r border-slate-200 font-bold font-mono text-xs text-violet-700">
+                          <td className="px-4 py-3 text-center border-r border-slate-200 font-bold font-mono text-xs text-brand-deep-teal">
                             ৳ {postMoney}
                           </td>
 
@@ -295,7 +295,7 @@ export default function WriterPanel({
                                 e.stopPropagation(); // Prevent duplicate trigger from row click
                                 onOpenPost(post);
                               }}
-                              className="py-1 px-3 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-lg text-xs font-bold flex items-center justify-center gap-1 mx-auto transition-all cursor-pointer"
+                              className="py-1 px-3 bg-brand-soft-teal/15 hover:bg-brand-soft-teal/30 text-brand-deep-teal rounded-lg text-xs font-bold flex items-center justify-center gap-1 mx-auto transition-all cursor-pointer"
                             >
                               <Edit className="w-3.5 h-3.5" />
                               রিভিউ ও এডিট
@@ -313,14 +313,14 @@ export default function WriterPanel({
           {/* Earnings Withdrawal request */}
           <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-xs">
             <h3 className="text-base font-bold text-slate-700 flex items-center gap-2 mb-4">
-              <DollarSign className="w-5 h-5 text-violet-600" />
+              <DollarSign className="w-5 h-5 text-brand-deep-teal" />
               ব্যালেন্স উইথড্র রিকোয়েস্ট (Earning Withdrawal)
             </h3>
 
             <form onSubmit={handleWithdrawSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">ওয়ালেটের কারেন্ট ব্যালেন্স</label>
-                <div className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-bold font-mono text-violet-600 text-sm">
+                <div className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-bold font-mono text-brand-deep-teal text-sm">
                   ৳ {profile.currentBalance} BDT
                 </div>
               </div>
@@ -340,7 +340,7 @@ export default function WriterPanel({
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">পেমেন্ট মেথড ও অ্যাকাউন্ট নম্বর</label>
                 <div className="flex gap-2">
                   <select
-                    id="withdraw-method-select"
+                     id="withdraw-method-select"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     className="bg-white border border-slate-200 rounded-xl px-2.5 text-xs font-semibold"
@@ -363,7 +363,7 @@ export default function WriterPanel({
               <button
                 id="submit-withdraw-btn"
                 type="submit"
-                className="py-2.5 px-4 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
+                className="py-2.5 px-4 bg-brand-deep-teal hover:bg-brand-deep-teal/90 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
               >
                 উইথড্র রিকোয়েস্ট পাঠান
               </button>

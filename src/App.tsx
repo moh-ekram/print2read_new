@@ -651,40 +651,40 @@ export default function App() {
       id: "home" as const,
       label: "হোম পেজ",
       icon: BookOpen,
-      color: "violet",
-      bgColor: "bg-violet-50 text-violet-750 border border-violet-100",
-      hoverColor: "hover:bg-violet-50/50 hover:text-violet-600",
-      activeText: "text-violet-700",
+      color: "brand-deep-teal",
+      bgColor: "bg-brand-deep-teal/10 text-brand-deep-teal border border-brand-deep-teal/20",
+      hoverColor: "hover:bg-brand-deep-teal/5 hover:text-brand-deep-teal",
+      activeText: "text-brand-deep-teal",
       desc: "সকল প্রকাশিত লেখা ও ড্যাশবোর্ড"
     },
     {
       id: "profile" as const,
       label: "আমার প্রোফাইল",
       icon: User,
-      color: "emerald",
-      bgColor: "bg-emerald-50 text-emerald-750 border border-emerald-100",
-      hoverColor: "hover:bg-emerald-50/50 hover:text-emerald-600",
-      activeText: "text-emerald-700",
+      color: "brand-soft-teal",
+      bgColor: "bg-brand-soft-teal/15 text-brand-deep-teal border border-brand-soft-teal/30",
+      hoverColor: "hover:bg-brand-soft-teal/5 hover:text-brand-deep-teal",
+      activeText: "text-brand-deep-teal",
       desc: "প্রোফাইল বিবরণ ও বায়োগ্রাফি"
     },
     {
       id: "authors" as const,
       label: "লেখকবৃন্দ",
       icon: Users,
-      color: "indigo",
-      bgColor: "bg-indigo-50 text-indigo-750 border border-indigo-100",
-      hoverColor: "hover:bg-indigo-50/50 hover:text-indigo-600",
-      activeText: "text-indigo-700",
+      color: "brand-deep-teal",
+      bgColor: "bg-brand-deep-teal/10 text-brand-deep-teal border border-brand-deep-teal/20",
+      hoverColor: "hover:bg-brand-deep-teal/5 hover:text-brand-deep-teal",
+      activeText: "text-brand-deep-teal",
       desc: "রেজিস্টার্ড লেখকদের তালিকা"
     },
     {
       id: "basket" as const,
       label: "বাস্কেট",
       icon: ShoppingBag,
-      color: "orange",
-      bgColor: "bg-orange-50 text-orange-750 border border-orange-100",
-      hoverColor: "hover:bg-orange-50/50 hover:text-orange-600",
-      activeText: "text-orange-700",
+      color: "brand-amber",
+      bgColor: "bg-brand-amber/10 text-brand-amber border border-brand-amber/20",
+      hoverColor: "hover:bg-brand-amber/5 hover:text-brand-amber",
+      activeText: "text-brand-amber",
       desc: "মুদ্রণযোগ্য লেখার ঝুড়ি",
       badge: currentUser?.printBasketPostIds.length || 0
     },
@@ -692,10 +692,10 @@ export default function App() {
       id: "balance" as const,
       label: "ব্যালেন্স",
       icon: Coins,
-      color: "amber",
-      bgColor: "bg-amber-50 text-amber-700 border border-amber-100",
-      hoverColor: "hover:bg-amber-50/50 hover:text-amber-600",
-      activeText: "text-amber-700",
+      color: "brand-amber",
+      bgColor: "bg-brand-amber/10 text-brand-amber border border-brand-amber/20",
+      hoverColor: "hover:bg-brand-amber/5 hover:text-brand-amber",
+      activeText: "text-brand-amber",
       desc: "কয়েন ক্রয় ও লেনদেনের খতিয়ান",
       badgeText: currentUser ? `${currentUser.coins} CC` : undefined
     },
@@ -703,10 +703,10 @@ export default function App() {
       id: "writer-panel" as const,
       label: currentUser?.role === "writer" ? "লেখক প্যানেল" : "লেখক আবেদন",
       icon: PenTool,
-      color: "pink",
-      bgColor: "bg-pink-50 text-pink-700 border border-pink-100",
-      hoverColor: "hover:bg-pink-50/50 hover:text-pink-600",
-      activeText: "text-pink-700",
+      color: "brand-soft-teal",
+      bgColor: "bg-brand-soft-teal/15 text-brand-deep-teal border border-brand-soft-teal/30",
+      hoverColor: "hover:bg-brand-soft-teal/5 hover:text-brand-deep-teal",
+      activeText: "text-brand-deep-teal",
       desc: currentUser?.role === "writer" ? "লেখা প্রকাশ ও আয় পরিসংখ্যান" : "লেখক হতে আবেদন করুন"
     }
   ];
@@ -720,7 +720,7 @@ export default function App() {
           <div className="flex flex-col gap-6 px-4">
             {/* Header / Logo */}
             <div className="flex items-center gap-3 px-2">
-              <div className="bg-gradient-to-tr from-violet-600 to-indigo-600 text-white p-2.5 rounded-2xl shadow-sm shrink-0">
+              <div className="bg-gradient-to-tr from-brand-deep-teal to-brand-soft-teal text-white p-2.5 rounded-2xl shadow-sm shrink-0">
                 <Printer className="w-5 h-5 animate-pulse" />
               </div>
               <div className="min-w-0">
@@ -728,8 +728,6 @@ export default function App() {
                 <p className="text-[10px] text-slate-400 font-medium tracking-wide mt-1.5">মুদ্রণযোগ্য সাহিত্য হাব</p>
               </div>
             </div>
-
-            <div className="h-px bg-slate-100 my-1" />
 
             {/* Nav Items */}
             <nav className="flex flex-col gap-1.5">
@@ -862,7 +860,7 @@ export default function App() {
             <div className="max-w-[1550px] mx-auto px-4 md:px-8 h-full flex items-center justify-between">
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <div className="md:hidden bg-gradient-to-r from-violet-600 to-indigo-600 p-2 rounded-xl text-white shadow-xs">
+                  <div className="md:hidden bg-gradient-to-r from-brand-deep-teal to-brand-soft-teal p-2 rounded-xl text-white shadow-xs">
                     <Printer className="w-5 h-5" />
                   </div>
                   <div>
@@ -880,7 +878,7 @@ export default function App() {
                       onClick={() => setIsCoinsOpen(true)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-full shadow-3xs transition-all text-xs font-bold text-slate-700 cursor-pointer"
                     >
-                      <Coins className="w-4 h-4 text-orange-500" />
+                      <Coins className="w-4 h-4 text-brand-amber" />
                       <span className="font-mono">{currentUser.coins} CC</span>
                     </button>
 
@@ -888,9 +886,9 @@ export default function App() {
 
                     <button
                       onClick={() => setActiveNavView("profile")}
-                      className="flex items-center gap-2 pr-3 pl-1 text-xs hover:text-violet-600 transition-colors"
+                      className="flex items-center gap-2 pr-3 pl-1 text-xs hover:text-brand-deep-teal transition-colors"
                     >
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-brand-soft-teal shrink-0" />
                       <span className="font-semibold text-slate-700 max-w-[120px] truncate leading-none">{currentUser.displayName}</span>
                     </button>
 
@@ -905,7 +903,7 @@ export default function App() {
                 ) : (
                   <button
                     onClick={() => setIsAuthOpen(true)}
-                    className="py-2 px-4 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer animate-pulse"
+                    className="py-2 px-4 bg-brand-deep-teal hover:bg-brand-deep-teal/90 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                   >
                     <LogIn className="w-4 h-4" />
                     লগইন / নিবন্ধন
@@ -916,7 +914,7 @@ export default function App() {
           </header>
 
           {/* Mobile responsive scrollable submenu (only visible on mobile) */}
-          <div className="md:hidden flex items-center gap-2 overflow-x-auto bg-white border-b border-slate-200 p-2.5 scrollbar-none shrink-0 sticky top-16 z-35 shadow-2xs">
+          <div className="md:hidden flex items-center gap-2 overflow-x-auto bg-white p-2.5 scrollbar-none shrink-0 sticky top-16 z-35">
             {menuItems.map((item) => {
               const IconComponent = item.icon;
               const isActive = item.id === "writer-panel"
@@ -995,8 +993,8 @@ export default function App() {
                 </p>
               </div>
               <div className="flex md:self-center self-stretch shrink-0 justify-center">
-                <span className="bg-violet-50 text-violet-700 text-xs px-4 py-2 border border-violet-100 rounded-2xl font-bold flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-violet-600" />
+                <span className="bg-brand-soft-teal/10 text-brand-deep-teal text-xs px-4 py-2 border border-brand-soft-teal/30 rounded-2xl font-bold flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-brand-amber animate-spin" style={{ animationDuration: "3s" }} />
                   Premium Edition Active
                 </span>
               </div>
@@ -1033,14 +1031,14 @@ export default function App() {
                           placeholder="লেখা বা লেখক অনুসন্ধান..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all text-slate-700"
+                          className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-soft-teal/20 focus:border-brand-soft-teal transition-all text-slate-700"
                         />
                       </div>
                     </div>
 
                     {loadingPosts ? (
                       <div className="text-center py-16">
-                        <div className="w-8 h-8 border-3 border-slate-300 border-t-violet-600 rounded-full animate-spin mx-auto mb-2"></div>
+                        <div className="w-8 h-8 border-3 border-slate-300 border-t-brand-deep-teal rounded-full animate-spin mx-auto mb-2"></div>
                         <p className="text-xs text-slate-400">লেখাগুলো লোড করা হচ্ছে...</p>
                       </div>
                     ) : filteredPosts.length === 0 ? (
@@ -1059,11 +1057,11 @@ export default function App() {
                           return (
                             <div 
                               key={post.id}
-                              className="bg-white p-5 rounded-2xl border border-slate-150 hover:border-violet-300 shadow-3xs hover:shadow-md transition-all duration-300 flex flex-col justify-between"
+                              className="bg-white p-5 rounded-2xl border border-slate-150 hover:border-brand-soft-teal shadow-3xs hover:shadow-md transition-all duration-300 flex flex-col justify-between"
                             >
                               <div>
                                 <div className="flex items-center justify-between gap-2 mb-3">
-                                  <span className="text-[10px] bg-slate-100 font-sans font-bold text-slate-500 px-2 py-0.5 rounded-full">
+                                  <span className="text-[10px] bg-brand-soft-teal/10 font-sans font-bold text-brand-deep-teal px-2 py-0.5 rounded-full">
                                     ✍️ {post.authorName}
                                   </span>
                                   {currentUser && (
@@ -1072,7 +1070,7 @@ export default function App() {
                                       onClick={() => handleAction("bookmark", post.id)}
                                       className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
                                         isBookmarked 
-                                          ? "bg-violet-50 border-violet-200 text-violet-600 border-violet-300" 
+                                          ? "bg-brand-soft-teal/15 border-brand-soft-teal/40 text-brand-deep-teal" 
                                           : "bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600"
                                       }`}
                                     >
@@ -1084,7 +1082,7 @@ export default function App() {
                                 <h4 
                                   id={`feed-post-title-click-${post.id}`}
                                   onClick={() => handleOpenPostReader(post)}
-                                  className="text-base md:text-lg font-bold font-serif text-slate-800 hover:text-violet-700 transition-colors cursor-pointer leading-snug mb-1.5"
+                                  className="text-base md:text-lg font-bold font-serif text-slate-800 hover:text-brand-amber transition-colors cursor-pointer leading-snug mb-1.5"
                                 >
                                   {post.title}
                                 </h4>
@@ -1096,14 +1094,14 @@ export default function App() {
                               <div className="pt-3 border-t border-slate-150 flex items-center justify-between flex-wrap gap-2">
                                 <div className="flex gap-4 text-[10px] text-slate-400 font-mono font-medium">
                                   <span className="flex items-center gap-1">👁️ {post.viewCount} ভিউ</span>
-                                  <span className="flex items-center gap-1 text-orange-500 font-bold">🖨️ {post.addToPrintCount} প্রিন্টস</span>
+                                  <span className="flex items-center gap-1 text-brand-amber font-bold">🖨️ {post.addToPrintCount} প্রিন্টস</span>
                                 </div>
 
                                 <div className="flex items-center gap-2">
                                   <button
                                     id={`read-post-feed-${post.id}`}
                                     onClick={() => handleOpenPostReader(post)}
-                                    className="py-1.5 px-3 hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                                    className="py-1.5 px-3 hover:bg-brand-soft-teal/10 text-brand-deep-teal border border-slate-200 hover:border-brand-soft-teal/40 rounded-lg text-xs font-semibold transition-all cursor-pointer"
                                   >
                                     পড়ুন
                                   </button>
@@ -1114,8 +1112,8 @@ export default function App() {
                                       onClick={() => handleAction("basket", post.id)}
                                       className={`py-1.5 px-3.5 rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer flex items-center gap-1 ${
                                         isAdded 
-                                          ? "bg-slate-800 text-white" 
-                                          : "bg-orange-500 hover:bg-orange-600 text-white"
+                                          ? "bg-brand-deep-teal text-white" 
+                                          : "bg-brand-amber hover:bg-brand-amber/90 text-white"
                                       }`}
                                     >
                                       <Printer className="w-3.5 h-3.5" />
@@ -1138,18 +1136,18 @@ export default function App() {
                   {/* Top Authors chart */}
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-3.5">
-                      <TrendingUp className="w-4 h-4 text-emerald-600" />
+                      <TrendingUp className="w-4 h-4 text-brand-soft-teal" />
                       সেরা লেখক চার্ট (Top Authors Chart)
                     </h3>
                     {topAuthors.length === 0 ? (
                       <p className="text-xs text-slate-400 py-4">কোনো ডাটা এখনও পাওয়া যায়নি।</p>
                     ) : (
-                      <div className="space-y-2.5">
+                      <div className="space-y-1">
                         {topAuthors.slice(0, 5).map((author: any, idx) => (
-                          <div key={author.id} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 rounded-lg px-1">
+                          <div key={author.id} className="flex items-center justify-between text-xs py-1.5 hover:bg-slate-50/60 rounded-xl px-2 transition-colors">
                             <div className="flex items-center gap-2">
                               <span className={`w-5 h-5 flex items-center justify-center rounded-full font-mono font-bold text-[10px] ${
-                                idx === 0 ? "bg-amber-100 text-amber-700" : idx === 1 ? "bg-slate-100 text-slate-600" : "bg-orange-50 text-orange-750"
+                                idx === 0 ? "bg-brand-amber/15 text-brand-amber" : idx === 1 ? "bg-brand-soft-teal/20 text-brand-deep-teal" : "bg-slate-100 text-slate-500"
                               }`}>
                                 {idx + 1}
                               </span>
@@ -1159,9 +1157,9 @@ export default function App() {
                               </div>
                             </div>
                             <div className="text-right text-[10px] text-slate-400 font-mono">
-                              <span className="text-emerald-600 font-bold">{author.totalViews} ভিউ</span>
+                              <span className="text-brand-deep-teal font-bold">{author.totalViews} ভিউ</span>
                               <span className="mx-1">•</span>
-                              <span className="text-orange-500 font-bold">{author.totalPrints} প্রিন্টস</span>
+                              <span className="text-brand-amber font-bold">{author.totalPrints} প্রিন্টস</span>
                             </div>
                           </div>
                         ))}
@@ -1172,7 +1170,7 @@ export default function App() {
                   {/* Global print history */}
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-3.5">
-                      <History className="w-4 h-4 text-orange-500 animate-pulse" />
+                      <History className="w-4 h-4 text-brand-amber animate-pulse" />
                       গ্লোবাল প্রিন্ট ইতিহাস (Global Print History)
                     </h3>
                     {adminData.globalHistory.length === 0 ? (
@@ -1181,17 +1179,16 @@ export default function App() {
                       <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                         {adminData.globalHistory.slice(0, 10).map((h: any, idx: number) => {
                           const borderColors = [
-                            "border-l-4 border-emerald-500 bg-emerald-50/40",
-                            "border-l-4 border-orange-500 bg-orange-50/40",
-                            "border-l-4 border-violet-500 bg-violet-50/40",
-                            "border-l-4 border-slate-300 bg-slate-50/40"
+                            "border-l-3 border-brand-soft-teal bg-brand-soft-teal/5",
+                            "border-l-3 border-brand-amber bg-brand-amber/5",
+                            "border-l-3 border-brand-deep-teal bg-brand-deep-teal/5"
                           ];
                           return (
-                            <div key={h.id} className={`text-[10px] p-2.5 border border-slate-100 rounded-lg flex justify-between items-center gap-2 leading-tight ${borderColors[idx % borderColors.length]}`}>
+                            <div key={h.id} className={`text-[10px] p-2 border border-slate-100 rounded-lg flex justify-between items-center gap-2 leading-tight ${borderColors[idx % borderColors.length]}`}>
                               <div className="truncate flex-1">
                                 <span className="font-bold text-slate-600">{h.userDisplayName}</span>
                                 <span className="text-slate-400 mx-1">যোগ করেছেন</span>
-                                <span className="font-semibold text-violet-700 truncate inline-block max-w-[120px]" title={h.postTitle}>{h.postTitle}</span>
+                                <span className="font-semibold text-brand-deep-teal truncate inline-block max-w-[120px]" title={h.postTitle}>{h.postTitle}</span>
                               </div>
                               <span className="text-slate-400 font-mono shrink-0">
                                 {new Date(h.timestamp).toLocaleTimeString("bn-BD", { hour: "numeric", minute: "2-digit" })}

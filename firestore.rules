@@ -3,6 +3,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Default-deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
     // Helper functions
     function isAuthenticated() {
       return request.auth != null;
@@ -12,16 +17,20 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    function userDocExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+    
+    function getUserRole(userId) {
+      return userDocExists(userId) ? get(/databases/$(database)/documents/users/$(userId)).data.role : 'reader';
     }
     
     function isAdmin() {
       return isAuthenticated() && (
-        getUserRole() == 'admin' || 
         request.auth.token.email == 'admin@readtoprint.com' ||
         request.auth.token.email == 'mohammad.001ekram@gmail.com' ||
-        request.auth.token.email == 'dusahityaparishad@gmail.com'
+        request.auth.token.email == 'dusahityaparishad@gmail.com' ||
+        getUserRole(request.auth.uid) == 'admin'
       );
     }
 
@@ -29,15 +38,43 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isOwner(userId) || isAdmin();
-      allow update: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        // Owner can update everything EXCEPT their role (unless their role doesn't change or they have an admin email)
+        (isOwner(userId) && (
+          !('role' in request.resource.data) || 
+          !('role' in resource.data) || 
+          request.resource.data.role == resource.data.role ||
+          // Admin emails can elevate themselves to admin role
+          request.auth.token.email == 'admin@readtoprint.com' ||
+          request.auth.token.email == 'mohammad.001ekram@gmail.com' ||
+          request.auth.token.email == 'dusahityaparishad@gmail.com'
+        )) ||
+        // Transactional updates to another user (e.g., paying an author during basket actions)
+        (!isOwner(userId) && (
+          // Ensure they don't change core profile info like role, displayName, or email
+          (!('role' in request.resource.data) || !('role' in resource.data) || request.resource.data.role == resource.data.role) &&
+          (!('displayName' in request.resource.data) || !('displayName' in resource.data) || request.resource.data.displayName == resource.data.displayName) &&
+          (!('email' in request.resource.data) || !('email' in resource.data) || request.resource.data.email == resource.data.email) &&
+          // Ensure coins and balance are not decreased
+          (!('coins' in request.resource.data) || !('coins' in resource.data) || request.resource.data.coins >= resource.data.coins) &&
+          (!('currentBalance' in request.resource.data) || !('currentBalance' in resource.data) || request.resource.data.currentBalance >= resource.data.currentBalance)
+        ))
+      );
       allow delete: if isAdmin();
     }
 
     // 2. Posts Collection
     match /posts/{postId} {
       allow read: if true; // Publicly readable
-      allow create: if isAuthenticated() && (getUserRole() == 'writer' || isAdmin());
-      allow update: if isAuthenticated() && (request.resource.data.authorId == request.auth.uid || isAdmin() || request.resource.data.viewCount == resource.data.viewCount + 1 || request.resource.data.addToPrintCount == resource.data.addToPrintCount + 1);
+      allow create: if isAuthenticated() && (getUserRole(request.auth.uid) == 'writer' || isAdmin());
+      allow update: if isAuthenticated() && (
+        request.resource.data.authorId == request.auth.uid || 
+        isAdmin() || 
+        // Allow view count or print count adjustments safely
+        (!('viewCount' in request.resource.data) || !('viewCount' in resource.data) || request.resource.data.viewCount >= resource.data.viewCount) ||
+        (!('addToPrintCount' in request.resource.data) || !('addToPrintCount' in resource.data) || request.resource.data.addToPrintCount >= resource.data.addToPrintCount - 1)
+      );
       allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
     }
 

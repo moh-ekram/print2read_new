@@ -5,7 +5,7 @@
 
 import React, { useState } from "react";
 import { Post, UserProfile } from "../types";
-import { BookMarked, ShoppingBag, Users, Coins, Wallet, BookOpen, Trash2, ArrowRight } from "lucide-react";
+import { BookMarked, ShoppingBag, Users, Coins, Wallet, BookOpen, Trash2 } from "lucide-react";
 
 interface ReaderPanelProps {
   profile: UserProfile;
@@ -61,7 +61,7 @@ export default function ReaderPanel({
           className="text-left bg-white hover:bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-300 group cursor-pointer w-full flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
-            <div className="bg-orange-100 text-orange-600 p-3 rounded-xl group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">
+            <div className="bg-brand-amber/10 text-brand-amber p-3 rounded-xl group-hover:bg-brand-amber group-hover:text-white transition-all duration-300">
               <Coins className="w-5 h-5" />
             </div>
             <div>
@@ -69,7 +69,7 @@ export default function ReaderPanel({
               <p className="text-2xl font-bold font-mono text-slate-800 mt-1">{profile.coins} CC</p>
             </div>
           </div>
-          <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-md group-hover:bg-orange-500 group-hover:text-white transition-all font-sans">
+          <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-md group-hover:bg-brand-amber group-hover:text-white transition-all font-sans">
             বিশদ দেখুন ➜
           </span>
         </button>
@@ -81,7 +81,7 @@ export default function ReaderPanel({
           className="text-left bg-white hover:bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-300 group cursor-pointer w-full flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
-            <div className="bg-violet-100 text-violet-600 p-3 rounded-xl group-hover:bg-violet-500 group-hover:text-white transition-all duration-300">
+            <div className="bg-brand-soft-teal/15 text-brand-deep-teal p-3 rounded-xl group-hover:bg-brand-deep-teal group-hover:text-white transition-all duration-300">
               <Wallet className="w-5 h-5" />
             </div>
             <div>
@@ -89,7 +89,7 @@ export default function ReaderPanel({
               <p className="text-2xl font-bold font-mono text-slate-800 mt-1">৳ {profile.currentBalance}</p>
             </div>
           </div>
-          <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-md group-hover:bg-violet-600 group-hover:text-white transition-all font-sans">
+          <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-md group-hover:bg-brand-deep-teal group-hover:text-white transition-all font-sans">
             বিশদ দেখুন ➜
           </span>
         </button>
@@ -97,7 +97,7 @@ export default function ReaderPanel({
 
       {/* Profile Details Card */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-4">
-        <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-lg font-serif shrink-0">
+        <div className="w-12 h-12 bg-brand-soft-teal/25 text-brand-deep-teal rounded-full flex items-center justify-center font-bold text-lg font-serif shrink-0">
           {profile.displayName.substring(0, 1)}
         </div>
         <div>
@@ -107,47 +107,47 @@ export default function ReaderPanel({
         </div>
       </div>
 
-      {/* Reader Panel Toggle Navigation using Soft Minimalist Green, Orange and Purple Box Button Combinations */}
+      {/* Reader Panel Toggle Navigation */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Bookmark Button: Purple (বেগুনি) */}
+        {/* Bookmark Button: Soft Teal */}
         <button
           id="reader-tab-bookmarks"
           onClick={() => setActiveTab("bookmarks")}
           className={`p-4 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-300 flex flex-col items-center justify-center gap-2 cursor-pointer border ${
             activeTab === "bookmarks"
-              ? "bg-violet-50 text-violet-800 border-2 border-violet-300 shadow-xs shadow-violet-100"
-              : "bg-violet-50/20 text-violet-600 border-violet-100/40 hover:bg-violet-50/55 hover:border-violet-200"
+              ? "bg-brand-soft-teal/15 text-brand-deep-teal border-2 border-brand-soft-teal shadow-xs shadow-brand-soft-teal/10"
+              : "bg-brand-soft-teal/5 text-brand-deep-teal/85 border-brand-soft-teal/15 hover:bg-brand-soft-teal/10 hover:border-brand-soft-teal/30"
           }`}
         >
-          <BookMarked className="w-5 h-5 text-violet-500" />
+          <BookMarked className="w-5 h-5 text-brand-soft-teal" />
           <span>বুকমার্ক করা লেখা ({bookmarkedPosts.length})</span>
         </button>
 
-        {/* Basket Button: Green (সবুজ) */}
+        {/* Basket Button: Deep Teal */}
         <button
           id="reader-tab-basket"
           onClick={() => setActiveTab("basket")}
           className={`p-4 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-300 flex flex-col items-center justify-center gap-2 cursor-pointer border ${
             activeTab === "basket"
-              ? "bg-emerald-50 text-emerald-800 border-2 border-emerald-300 shadow-xs shadow-emerald-100"
-              : "bg-emerald-50/20 text-emerald-600 border-emerald-100/40 hover:bg-emerald-50/55 hover:border-emerald-200"
+              ? "bg-brand-deep-teal/15 text-brand-deep-teal border-2 border-brand-deep-teal shadow-xs shadow-brand-deep-teal/10"
+              : "bg-brand-deep-teal/5 text-brand-deep-teal/85 border-brand-deep-teal/15 hover:bg-brand-deep-teal/10 hover:border-brand-deep-teal/30"
           }`}
         >
-          <ShoppingBag className="w-5 h-5 text-emerald-600" />
+          <ShoppingBag className="w-5 h-5 text-brand-deep-teal" />
           <span>প্রিন্ট বাস্কেট ({basketPosts.length})</span>
         </button>
 
-        {/* Following List Button: Orange (কমলা) */}
+        {/* Following List Button: Amber */}
         <button
           id="reader-tab-following"
           onClick={() => setActiveTab("following")}
           className={`p-4 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-300 flex flex-col items-center justify-center gap-2 cursor-pointer border ${
             activeTab === "following"
-              ? "bg-orange-50 text-orange-800 border-2 border-orange-300 shadow-xs shadow-orange-100"
-              : "bg-orange-50/20 text-orange-600 border-orange-100/40 hover:bg-orange-50/55 hover:border-orange-200"
+              ? "bg-brand-amber/15 text-brand-amber border-2 border-brand-amber shadow-xs shadow-brand-amber/10"
+              : "bg-brand-amber/5 text-brand-amber/85 border-brand-amber/15 hover:bg-brand-amber/10 hover:border-brand-amber/30"
           }`}
         >
-          <Users className="w-5 h-5 text-orange-500" />
+          <Users className="w-5 h-5 text-brand-amber" />
           <span>ফলোয়িং লেখক তালিকা ({followedAuthors.length})</span>
         </button>
       </div>
@@ -157,7 +157,7 @@ export default function ReaderPanel({
         {activeTab === "bookmarks" && (
           <div>
             <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-1.5">
-              <BookMarked className="w-4 h-4 text-brand-purple-500" />
+              <BookMarked className="w-4 h-4 text-brand-soft-teal" />
               আপনার বুকমার্ক করা লেখার তালিকা
             </h3>
 
@@ -181,7 +181,7 @@ export default function ReaderPanel({
                       <button
                         id={`read-bookmark-${post.id}`}
                         onClick={() => onOpenPost(post)}
-                        className="py-1.5 px-3 bg-brand-purple-50 hover:bg-brand-purple-100 text-brand-purple-700 rounded-lg text-xs font-medium transition-all"
+                        className="py-1.5 px-3 bg-brand-soft-teal/15 hover:bg-brand-soft-teal/30 text-brand-deep-teal rounded-lg text-xs font-medium transition-all"
                       >
                         পড়ুন
                       </button>
@@ -204,7 +204,7 @@ export default function ReaderPanel({
         {activeTab === "basket" && (
           <div>
             <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-1.5">
-              <ShoppingBag className="w-4 h-4 text-brand-orange-500" />
+              <ShoppingBag className="w-4 h-4 text-brand-deep-teal" />
               আপনার প্রিন্ট বাস্কেটে থাকা লেখা
             </h3>
 
@@ -224,14 +224,14 @@ export default function ReaderPanel({
                       <h4 className="text-sm font-bold text-slate-700 truncate">{post.title}</h4>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[11px] text-slate-400 font-mono">
                         <span>কয়েন খরচ: {post.priceCoins} CC</span>
-                        <span>মূল্য: ৳{post.priceMoney}</span>
+                        <span>मूल्य: ৳{post.priceMoney}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         id={`read-basket-${post.id}`}
                         onClick={() => onOpenPost(post)}
-                        className="py-1.5 px-3 bg-brand-orange-50 hover:bg-brand-orange-100 text-brand-orange-700 rounded-lg text-xs font-medium transition-all"
+                        className="py-1.5 px-3 bg-brand-amber/15 hover:bg-brand-amber/30 text-brand-amber rounded-lg text-xs font-medium transition-all"
                       >
                         পড়ুন ও প্রিন্ট করুন
                       </button>
@@ -254,7 +254,7 @@ export default function ReaderPanel({
         {activeTab === "following" && (
           <div>
             <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-brand-green-600" />
+              <Users className="w-4 h-4 text-brand-amber" />
               আপনার অনুসৃত (Followed) লেখকবৃন্দ
             </h3>
 

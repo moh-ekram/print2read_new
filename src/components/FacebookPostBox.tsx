@@ -5,7 +5,7 @@
 
 import React, { useState } from "react";
 import { UserProfile } from "../types";
-import { PenTool, Image, Smile, Settings, X, Globe, DollarSign, Coins, BookOpen, Layers } from "lucide-react";
+import { PenTool, X, Globe, Coins, BookOpen, Layers } from "lucide-react";
 
 interface FacebookPostBoxProps {
   currentUser: UserProfile;
@@ -80,7 +80,7 @@ export default function FacebookPostBox({
     <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-3xs mb-6">
       {/* Facebook style top composer bar */}
       <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-        <div className="w-10 h-10 rounded-full bg-violet-100 border border-violet-200 flex items-center justify-center font-bold text-violet-700 text-sm shrink-0">
+        <div className="w-10 h-10 rounded-full bg-brand-soft-teal/10 border border-brand-soft-teal/20 flex items-center justify-center font-bold text-brand-deep-teal text-sm shrink-0">
           {userInitials}
         </div>
         <button
@@ -97,15 +97,15 @@ export default function FacebookPostBox({
       <div className="flex items-center justify-around pt-3">
         <button
           onClick={() => setIsOpen(true)}
-          className="flex-1 py-1.5 px-2 hover:bg-slate-50 rounded-xl text-[11px] font-bold text-emerald-600 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          className="flex-1 py-1.5 px-2 hover:bg-slate-50 rounded-xl text-[11px] font-bold text-brand-deep-teal flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
         >
-          <Layers className="w-3.5 h-3.5" />
+          <Layers className="w-3.5 h-3.5 text-brand-soft-teal" />
           কবিতা বা গল্প
         </button>
         <div className="w-px h-4 bg-slate-200" />
         <button
           onClick={() => setIsOpen(true)}
-          className="flex-1 py-1.5 px-2 hover:bg-slate-50 rounded-xl text-[11px] font-bold text-orange-500 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          className="flex-1 py-1.5 px-2 hover:bg-slate-50 rounded-xl text-[11px] font-bold text-brand-amber flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
         >
           <Coins className="w-3.5 h-3.5" />
           কয়েন মূল্য নির্ধারণ
@@ -113,22 +113,22 @@ export default function FacebookPostBox({
         <div className="w-px h-4 bg-slate-200" />
         <button
           onClick={() => setIsOpen(true)}
-          className="flex-1 py-1.5 px-2 hover:bg-slate-50 rounded-xl text-[11px] font-bold text-violet-600 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          className="flex-1 py-1.5 px-2 hover:bg-slate-50 rounded-xl text-[11px] font-bold text-brand-deep-teal flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
         >
-          <BookOpen className="w-3.5 h-3.5" />
+          <BookOpen className="w-3.5 h-3.5 text-brand-amber" />
           সরাসরি প্রকাশ
         </button>
       </div>
 
       {/* Facebook-style Modal Overlay */}
       {isOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-150 p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-brand-deep-teal/40 backdrop-blur-xs flex items-center justify-center z-150 p-4 animate-fade-in">
           <div className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden max-h-[90vh] animate-scale-up">
             
             {/* Modal Header */}
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <PenTool className="w-4 h-4 text-violet-600" />
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <PenTool className="w-4 h-4 text-brand-amber" />
                 নতুন পোস্ট তৈরি করুন
               </h3>
               <button
@@ -145,14 +145,14 @@ export default function FacebookPostBox({
               
               {/* Profile Card */}
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-violet-100 border border-violet-200 flex items-center justify-center font-bold text-violet-700 text-sm">
+                <div className="w-10 h-10 rounded-full bg-brand-soft-teal/10 border border-brand-soft-teal/20 flex items-center justify-center font-bold text-brand-deep-teal text-sm">
                   {userInitials}
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-800 leading-none">
                     {currentUser?.displayName || "লেখক"}
                   </h4>
-                  <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-400 font-semibold bg-slate-100 px-2 py-0.5 rounded-full w-fit">
+                  <div className="mt-1 flex items-center gap-1 text-[9px] font-bold text-brand-deep-teal bg-brand-soft-teal/10 px-2 py-0.5 rounded-full w-fit">
                     <Globe className="w-3 h-3" />
                     পাবলিক (Public Feed)
                   </div>
@@ -161,28 +161,28 @@ export default function FacebookPostBox({
 
               {/* Title Input */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">শিরোনাম (Title) *</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">শিরোনাম (Title) *</label>
                 <input
                   id="fb-post-title"
                   type="text"
                   placeholder="একটি আকর্ষনীয় ও সুন্দর শিরোনাম দিন..."
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-violet-500/20 focus:border-violet-600 transition-all font-serif font-bold text-slate-800"
+                  className="w-full px-3 py-2 text-sm bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-soft-teal/20 focus:border-brand-soft-teal transition-all font-serif font-bold text-slate-800"
                   required
                 />
               </div>
 
               {/* Content Textarea */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">লেখার মূল অংশ (Content) *</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">লেখার মূল অংশ (Content) *</label>
                 <textarea
                   id="fb-post-content"
                   rows={6}
                   placeholder="আজ আপনার মনে কি চলছে লিখুন... (ফেসবুক পোস্টের মতো আপনার সম্পূর্ণ লেখা বা প্রবন্ধটি গুছিয়ে লিখুন)"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-violet-500/20 focus:border-violet-600 transition-all font-serif leading-relaxed text-slate-700 min-h-[140px]"
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-soft-teal/20 focus:border-brand-soft-teal transition-all font-serif leading-relaxed text-slate-700 min-h-[140px]"
                   required
                 />
               </div>
@@ -190,7 +190,7 @@ export default function FacebookPostBox({
               {/* Excerpt (Optional) */}
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">সংক্ষিপ্ত পরিচিতি (Excerpt - Optional)</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">সংক্ষিপ্ত পরিচিতি (Excerpt - Optional)</label>
                   <span className="text-[9px] text-slate-400 font-medium">ফাঁকা রাখলে প্রথম অংশ ব্যবহৃত হবে</span>
                 </div>
                 <input
@@ -199,7 +199,7 @@ export default function FacebookPostBox({
                   placeholder="পাঠকদের আকৃষ্ট করতে এক বা দুই লাইনের পরিচিতি দিন"
                   value={excerpt}
                   onChange={(e) => setExcerpt(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-violet-500/20 focus:border-violet-600 transition-all text-slate-600"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-soft-teal/20 focus:border-brand-soft-teal transition-all text-slate-600"
                 />
               </div>
 
@@ -211,7 +211,7 @@ export default function FacebookPostBox({
                     id="fb-post-category"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-violet-500/20"
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-brand-soft-teal/20"
                   >
                     <option value="গল্প ও উপন্যাস">গল্প ও উপন্যাস</option>
                     <option value="কবিতা ও আবৃত্তি">কবিতা ও আবৃত্তি</option>
@@ -223,7 +223,7 @@ export default function FacebookPostBox({
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">কয়েন মূল্য (CC Price)</label>
                   <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-orange-500 font-bold text-[10px]">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-brand-amber font-bold text-[10px]">
                       CC
                     </span>
                     <input
@@ -231,7 +231,7 @@ export default function FacebookPostBox({
                       type="number"
                       value={priceCoins}
                       onChange={(e) => setPriceCoins(Math.max(0, Number(e.target.value)))}
-                      className="w-full pl-7 pr-2 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500/20"
+                      className="w-full pl-7 pr-2 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-soft-teal/20"
                     />
                   </div>
                 </div>
@@ -239,7 +239,7 @@ export default function FacebookPostBox({
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">টাকা মূল্য (BDT Price)</label>
                   <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-violet-600 font-bold text-xs">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-brand-deep-teal font-bold text-xs">
                       ৳
                     </span>
                     <input
@@ -247,14 +247,14 @@ export default function FacebookPostBox({
                       type="number"
                       value={priceMoney}
                       onChange={(e) => setPriceMoney(Math.max(0, Number(e.target.value)))}
-                      className="w-full pl-6 pr-2 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500/20"
+                      className="w-full pl-6 pr-2 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-soft-teal/20"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Submit Buttons */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+              <div className="pt-3 border-t border-slate-150 flex items-center justify-end gap-3">
                 <button
                   id="cancel-fb-post-btn"
                   type="button"
@@ -267,7 +267,7 @@ export default function FacebookPostBox({
                   id="submit-fb-post-btn"
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="px-6 py-2.5 bg-brand-amber hover:bg-brand-amber/90 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <PenTool className="w-3.5 h-3.5" />
                   {isSubmitting ? "পোস্ট হচ্ছে..." : "পোস্ট করুন"}
