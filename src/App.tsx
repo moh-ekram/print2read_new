@@ -1929,9 +1929,11 @@ export default function App() {
                 <AdminPanel
                   profile={currentUser!}
                   adminData={adminData}
+                  posts={posts}
                   onApproveWithdraw={handleApproveWithdraw}
                   onApproveApplication={handleApproveApplication}
                   onRefreshAdminData={fetchAdminData}
+                  onRefreshPosts={fetchPosts}
                 />
               </div>
             )}

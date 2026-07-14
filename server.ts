@@ -152,23 +152,116 @@ const initialData = {
   ]
 };
 
+// Define Initial Seed Orders & Settlements
+const initialOrders = [
+  {
+    id: "ord-101",
+    customerName: "আরিফুর রহমান",
+    customerPhone: "01712345678",
+    customerAddress: "বাসা ১২, রোড ৪, ধানমন্ডি",
+    customerCity: "ঢাকা",
+    totalPages: 32,
+    articleTitles: ["সোনার তরী: কাব্যিক জীবনের নতুন রূপরেখা", "ডিজিটাল প্রিন্ট প্রযুক্তির বিবর্তন ও আমাদের ভবিষ্যৎ"],
+    totalPrice: 280,
+    paymentStatus: "Paid",
+    printingStatus: "Delivered",
+    bookName: "আমার নির্বাচিত সোনার তরী সংকলন",
+    timestamp: "2026-07-10T14:30:00Z"
+  },
+  {
+    id: "ord-102",
+    customerName: "সানজিদা আক্তার",
+    customerPhone: "01823456789",
+    customerAddress: "হাউজ ৪২, ও আর নিজাম রোড",
+    customerCity: "চট্টগ্রাম",
+    totalPages: 48,
+    articleTitles: ["কৃত্রিম বুদ্ধিমত্তা এবং বাংলা সাহিত্যের সংযোগ", "সোনার তরী: কাব্যিক জীবনের নতুন রূপরেখা"],
+    totalPrice: 420,
+    paymentStatus: "Paid",
+    printingStatus: "Printing",
+    bookName: "এআই ও কবিতা সংগ্রহ",
+    timestamp: "2026-07-13T09:15:00Z"
+  },
+  {
+    id: "ord-103",
+    customerName: "তানভীর হাসান",
+    customerPhone: "01911223344",
+    customerAddress: "৩/খ, জেল রোড",
+    customerCity: "সিলেট",
+    totalPages: 24,
+    articleTitles: ["ডিজিটাল প্রিন্ট প্রযুক্তির বিবর্তন ও আমাদের ভবিষ্যৎ"],
+    totalPrice: 180,
+    paymentStatus: "Unpaid",
+    printingStatus: "Received",
+    bookName: "প্রযুক্তি ও ভবিষ্যৎ",
+    timestamp: "2026-07-14T11:00:00Z"
+  }
+];
+
+const initialSettlements = [
+  {
+    id: "set-2026-06",
+    monthLabel: "জুন ২০২৬",
+    budgetPool: 15000,
+    totalCoins: 3000,
+    timestamp: "2026-06-30T18:00:00Z",
+    allocations: [
+      {
+        writerUid: "writer-1",
+        writerName: "রবীন্দ্রনাথ ঠাকুর (Writer)",
+        coins: 2000,
+        amountBDT: 10000
+      },
+      {
+        writerUid: "writer-2",
+        writerName: "কাজী নজরুল ইসলাম",
+        coins: 1000,
+        amountBDT: 5000
+      }
+    ]
+  }
+];
+
 // Load or Initialize Database
 function getDatabase() {
   if (!fs.existsSync(DB_FILE)) {
-    const seeded = { ...initialData, writerApplications: [] };
+    const seeded = { 
+      ...initialData, 
+      writerApplications: [],
+      orders: initialOrders,
+      settlements: initialSettlements
+    };
     fs.writeFileSync(DB_FILE, JSON.stringify(seeded, null, 2), "utf-8");
     return seeded;
   }
   try {
     const content = fs.readFileSync(DB_FILE, "utf-8");
     const db = JSON.parse(content);
+    let modified = false;
     if (!db.writerApplications) {
       db.writerApplications = [];
+      modified = true;
+    }
+    if (!db.orders) {
+      db.orders = initialOrders;
+      modified = true;
+    }
+    if (!db.settlements) {
+      db.settlements = initialSettlements;
+      modified = true;
+    }
+    if (modified) {
+      fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), "utf-8");
     }
     return db;
   } catch (e) {
     console.error("Database read error. Re-initializing.", e);
-    const seeded = { ...initialData, writerApplications: [] };
+    const seeded = { 
+      ...initialData, 
+      writerApplications: [],
+      orders: initialOrders,
+      settlements: initialSettlements
+    };
     fs.writeFileSync(DB_FILE, JSON.stringify(seeded, null, 2), "utf-8");
     return seeded;
   }
@@ -445,6 +538,8 @@ app.get("/api/admin/data", (req, res) => {
   res.json({
     withdrawRequests: db.withdrawRequests,
     writerApplications: db.writerApplications || [],
+    orders: db.orders || [],
+    settlements: db.settlements || [],
     users: db.users.map((u: any) => ({
       uid: u.uid,
       displayName: u.displayName,
@@ -456,6 +551,115 @@ app.get("/api/admin/data", (req, res) => {
     })),
     globalHistory: db.globalHistory
   });
+});
+
+// Update printing status of an order
+app.put("/api/admin/orders/:id", (req, res) => {
+  const { id } = req.params;
+  const { printingStatus } = req.body;
+  const db = getDatabase();
+  const order = db.orders.find((o: any) => o.id === id);
+  if (!order) {
+    return res.status(404).json({ error: "Order not found" });
+  }
+  order.printingStatus = printingStatus;
+  saveDatabase(db);
+  res.json({ success: true, order, orders: db.orders });
+});
+
+// Toggle post visibility (hide/unhide)
+app.put("/api/admin/posts/:id/visibility", (req, res) => {
+  const { id } = req.params;
+  const { hidden } = req.body;
+  const db = getDatabase();
+  const post = db.posts.find((p: any) => p.id === id);
+  if (!post) {
+    return res.status(404).json({ error: "Post not found" });
+  }
+  post.hidden = !!hidden;
+  saveDatabase(db);
+  res.json({ success: true, post, posts: db.posts });
+});
+
+// Delete post permanently
+app.delete("/api/admin/posts/:id", (req, res) => {
+  const { id } = req.params;
+  const db = getDatabase();
+  const postIdx = db.posts.findIndex((p: any) => p.id === id);
+  if (postIdx === -1) {
+    return res.status(404).json({ error: "Post not found" });
+  }
+  db.posts.splice(postIdx, 1);
+  saveDatabase(db);
+  res.json({ success: true, posts: db.posts });
+});
+
+// Perform Monthly Settlement & closing
+app.post("/api/admin/settlements", (req, res) => {
+  const { budgetPool } = req.body;
+  if (!budgetPool || isNaN(budgetPool)) {
+    return res.status(400).json({ error: "Valid budget pool amount is required" });
+  }
+
+  const db = getDatabase();
+  const writers = db.users.filter((u: any) => u.role === "writer");
+  const totalWriterCoins = writers.reduce((acc: number, curr: any) => acc + (curr.coins || 0), 0);
+
+  const allocations: any[] = [];
+
+  writers.forEach((writer: any) => {
+    let amountBDT = 0;
+    if (totalWriterCoins > 0 && writer.coins > 0) {
+      amountBDT = Math.round((writer.coins / totalWriterCoins) * Number(budgetPool));
+    }
+    writer.currentBalance = (writer.currentBalance || 0) + amountBDT;
+    allocations.push({
+      writerUid: writer.uid,
+      writerName: writer.displayName,
+      coins: writer.coins || 0,
+      amountBDT
+    });
+    // Reset coins
+    writer.coins = 0;
+  });
+
+  const newSettlement = {
+    id: "set-" + Date.now(),
+    monthLabel: new Date().toLocaleDateString("bn-BD", { month: "long", year: "numeric" }),
+    budgetPool: Number(budgetPool),
+    totalCoins: totalWriterCoins,
+    timestamp: new Date().toISOString(),
+    allocations
+  };
+
+  if (!db.settlements) {
+    db.settlements = [];
+  }
+  db.settlements.unshift(newSettlement);
+  saveDatabase(db);
+
+  res.json({ 
+    success: true, 
+    settlements: db.settlements, 
+    users: db.users,
+    withdrawRequests: db.withdrawRequests,
+    writerApplications: db.writerApplications || [],
+    orders: db.orders || [],
+    globalHistory: db.globalHistory
+  });
+});
+
+// Pay withdraw request manually
+app.post("/api/admin/withdraw/:id/pay", (req, res) => {
+  const { id } = req.params;
+  const db = getDatabase();
+  const request = db.withdrawRequests.find((r: any) => r.id === id);
+  if (!request) {
+    return res.status(404).json({ error: "Request not found" });
+  }
+  request.status = "approved";
+  saveDatabase(db);
+  res.json({ success: true, withdrawRequests: db.withdrawRequests });
 });
 
 // Create withdraw request (Writer)

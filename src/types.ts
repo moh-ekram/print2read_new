@@ -30,6 +30,7 @@ export interface Post {
   priceCoins: number;
   priceMoney: number;
   createdAt: string;
+  hidden?: boolean;
 }
 
 export interface CoinTransaction {
