@@ -112,9 +112,13 @@ export default function App() {
       fetchAdminData();
       return () => unsubscribe();
     } else {
-      // Sandbox mode: seed "reader-1" as default logged in user so the preview is highly interactive immediately!
-      const defaultUid = "reader-1";
-      loadUserSession(defaultUid);
+      // Sandbox mode: Restore last logged-in user if available, otherwise start as guest (null)
+      const savedUid = localStorage.getItem("sandbox_user_uid");
+      if (savedUid) {
+        loadUserSession(savedUid);
+      } else {
+        setCurrentUser(null);
+      }
       fetchPosts();
       fetchAdminData();
     }
@@ -206,6 +210,9 @@ export default function App() {
     setProfileSection(profile.role === "writer" ? "writer" : "reader");
     fetchTransactions(profile.uid);
     fetchAdminData();
+    if (!isFirebaseConfigured) {
+      localStorage.setItem("sandbox_user_uid", profile.uid);
+    }
   };
 
   const handleLogout = async () => {
@@ -215,6 +222,8 @@ export default function App() {
       } catch (e) {
         console.error("Firebase sign out error", e);
       }
+    } else {
+      localStorage.removeItem("sandbox_user_uid");
     }
     setCurrentUser(null);
   };
@@ -762,7 +771,7 @@ export default function App() {
                   className="p-1.5 hover:bg-red-50 text-red-500 hover:text-red-650 rounded-xl transition-colors cursor-pointer shrink-0"
                   title="লগআউট"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-4.5 h-4.5" />
                 </button>
               </div>
             ) : (
@@ -1871,6 +1880,7 @@ export default function App() {
       </div>
 
       {/* MODALS */}
+
       {isAuthOpen && (
         <AuthModal
           isOpen={isAuthOpen}
