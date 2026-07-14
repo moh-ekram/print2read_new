@@ -89,6 +89,7 @@ export interface Order {
   totalPages: number;
   totalPrice: number;
   paymentStatus: "Paid" | "Unpaid";
+  paymentMethod?: string;
   printingStatus: "Received" | "Printing" | "Shipped" | "Delivered";
   timestamp: string;
 }

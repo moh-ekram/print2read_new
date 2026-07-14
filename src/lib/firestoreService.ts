@@ -12,6 +12,16 @@ import {
 } from "firebase/firestore";
 import { firebaseDb, handleFirestoreError, OperationType } from "./firebase";
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs = 5000, errorMessage = "Firestore operation timed out"): Promise<T> {
+  let timeoutId: any;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+}
+
 // Seeding Initial Data if Firestore is empty
 const initialData = {
   users: [
@@ -880,7 +890,7 @@ export async function createOrderInFirestore(orderData: any) {
       id: orderId,
       timestamp: new Date().toISOString()
     };
-    await setDoc(doc(firebaseDb, "orders", orderId), newOrder);
+    await withTimeout(setDoc(doc(firebaseDb, "orders", orderId), newOrder), 5000, "অর্ডার সাবমিট করার সময় ফায়ারস্টোর রেসপন্স করেনি। দয়া করে পুনরায় চেষ্টা করুন।");
     return newOrder;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);

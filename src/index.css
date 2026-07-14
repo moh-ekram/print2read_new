@@ -1,9 +1,10 @@
+@import url('https://fonts.maateen.me/kalpurush/font.css');
 @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Noto+Serif+Bengali:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Hind Siliguri", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-serif: "Noto Serif Bengali", Georgia, serif;
+  --font-sans: "Kalpurush", "Hind Siliguri", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: "Kalpurush", "Noto Serif Bengali", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   /* Custom palette with soft, elegant variations of Green, Orange, and Purple */

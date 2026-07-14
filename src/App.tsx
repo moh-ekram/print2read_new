@@ -106,6 +106,9 @@ export default function App() {
   const [checkoutPin, setCheckoutPin] = useState("");
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"bKash" | "Nagad" | "Rocket" | "COD">("bKash");
+  const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
+  const [pdfPreviewCurrentPage, setPdfPreviewCurrentPage] = useState(1);
 
   // Load and sync orders initially
   useEffect(() => {
@@ -598,7 +601,8 @@ export default function App() {
         articleTitles: basketPosts.map(p => p.title),
         totalPages,
         totalPrice,
-        paymentStatus: "Paid",
+        paymentStatus: selectedPaymentMethod === "COD" ? "Unpaid" : "Paid",
+        paymentMethod: selectedPaymentMethod,
         printingStatus: "Received",
         timestamp: new Date().toISOString()
       };
@@ -945,9 +949,6 @@ export default function App() {
                           <p className={`text-xs font-bold leading-none ${isActive ? item.activeText : "text-slate-700"}`}>
                             {item.label}
                           </p>
-                          <p className="text-[9px] text-slate-400 truncate mt-1">
-                            {item.desc}
-                          </p>
                         </div>
                       </div>
                       {/* Badge */}
@@ -978,7 +979,6 @@ export default function App() {
                         <ShieldAlert className={`w-5 h-5 shrink-0 ${activeNavView === "admin" ? "text-rose-600" : "text-slate-400"}`} />
                         <div>
                           <p className="text-xs font-bold leading-none text-rose-700">অ্যাডমিন প্যানেল</p>
-                          <p className="text-[9px] text-slate-400 mt-1">রিকোয়েস্ট ও ইউজার কন্ট্রোল</p>
                         </div>
                       </button>
                     )}
