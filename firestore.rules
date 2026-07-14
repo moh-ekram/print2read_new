@@ -20,14 +20,16 @@ service cloud.firestore {
       return isAuthenticated() && (
         getUserRole() == 'admin' || 
         request.auth.token.email == 'admin@readtoprint.com' ||
-        request.auth.token.email == 'mohammad.001ekram@gmail.com'
+        request.auth.token.email == 'mohammad.001ekram@gmail.com' ||
+        request.auth.token.email == 'dusahityaparishad@gmail.com'
       );
     }
 
     // 1. Users Collection
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create, update: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) || isAdmin();
+      allow update: if isAuthenticated();
       allow delete: if isAdmin();
     }
 
