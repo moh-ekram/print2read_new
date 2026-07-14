@@ -28,7 +28,17 @@ import {
   Search,
   BookMarked,
   Heart,
-  ExternalLink
+  ExternalLink,
+  Users,
+  ShoppingBag,
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRight,
+  ChevronRight,
+  CreditCard,
+  Plus,
+  RefreshCw
 } from "lucide-react";
 
 export default function App() {
@@ -50,10 +60,28 @@ export default function App() {
 
   // Active view tabs for profile
   const [profileView, setProfileView] = useState<"reader" | "writer" | "admin">("reader");
-  const [activeNavView, setActiveNavView] = useState<"home" | "profile" | "admin">("home");
+  const [activeNavView, setActiveNavView] = useState<"home" | "profile" | "authors" | "basket" | "balance" | "writer-panel" | "admin">("home");
   const [profileSection, setProfileSection] = useState<"reader" | "writer">("reader");
   const [readerTab, setReaderTab] = useState<"bookmarks" | "basket" | "following">("bookmarks");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Simulated physical print states
+  const [printingState, setPrintingState] = useState<"idle" | "processing" | "paper" | "printing" | "success">("idle");
+  const [printProgress, setPrintProgress] = useState(0);
+  const [printedReceipt, setPrintedReceipt] = useState<any | null>(null);
+
+  // Coins purchase gateway simulation
+  const [paymentGatewayState, setPaymentGatewayState] = useState<"idle" | "selecting" | "paying" | "success">("idle");
+  const [selectedBundle, setSelectedBundle] = useState<any | null>(null);
+  const [gatewayPhone, setGatewayPhone] = useState("");
+  const [gatewayPin, setGatewayPin] = useState("");
+
+  // Author Application fields
+  const [appCategory, setAppCategory] = useState("প্রবন্ধ ও গল্প");
+  const [appSamples, setAppSamples] = useState("");
+  const [appMotivation, setAppMotivation] = useState("");
+  const [selectedAuthorForView, setSelectedAuthorForView] = useState<any | null>(null);
+  const [authorSearchQuery, setAuthorSearchQuery] = useState("");
 
   // Loading states
   const [loadingPosts, setLoadingPosts] = useState(true);
@@ -309,6 +337,33 @@ export default function App() {
     }
   };
 
+  const handleWriterApplicationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    try {
+      const response = await fetch(`/api/users/${currentUser.uid}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "writer",
+          bio: appMotivation || currentUser.bio || "লেখক হিসেবে স্বাগতম রিড-টু-প্রিন্ট অ্যাপ্লিকেশনে।"
+        })
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setCurrentUser(updated);
+        alert("অভিনন্দন! আপনার লেখক আবেদন অনুমোদিত হয়েছে এবং আপনি এখন একজন রেজিস্টার্ড লেখক।");
+        setActiveNavView("writer-panel");
+        fetchAdminData();
+      } else {
+        alert("আবেদন সাবমিট করতে ত্রুটি হয়েছে।");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("সার্ভার ত্রুটি ঘটেছে।");
+    }
+  };
+
   const handleOpenPostReader = async (post: Post) => {
     setSelectedPost(post);
     // Real view log
@@ -350,6 +405,71 @@ export default function App() {
       post.authorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       post.excerpt.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const menuItems = [
+    {
+      id: "home" as const,
+      label: "হোম পেজ",
+      icon: BookOpen,
+      color: "violet",
+      bgColor: "bg-violet-50 text-violet-750 border border-violet-100",
+      hoverColor: "hover:bg-violet-50/50 hover:text-violet-600",
+      activeText: "text-violet-700",
+      desc: "সকল প্রকাশিত লেখা ও ড্যাশবোর্ড"
+    },
+    {
+      id: "profile" as const,
+      label: "আমার প্রোফাইল",
+      icon: User,
+      color: "emerald",
+      bgColor: "bg-emerald-50 text-emerald-750 border border-emerald-100",
+      hoverColor: "hover:bg-emerald-50/50 hover:text-emerald-600",
+      activeText: "text-emerald-700",
+      desc: "প্রোফাইল বিবরণ ও বায়োগ্রাফি"
+    },
+    {
+      id: "authors" as const,
+      label: "লেখকবৃন্দ",
+      icon: Users,
+      color: "indigo",
+      bgColor: "bg-indigo-50 text-indigo-750 border border-indigo-100",
+      hoverColor: "hover:bg-indigo-50/50 hover:text-indigo-600",
+      activeText: "text-indigo-700",
+      desc: "রেজিস্টার্ড লেখকদের তালিকা"
+    },
+    {
+      id: "basket" as const,
+      label: "বাস্কেট",
+      icon: ShoppingBag,
+      color: "orange",
+      bgColor: "bg-orange-50 text-orange-750 border border-orange-100",
+      hoverColor: "hover:bg-orange-50/50 hover:text-orange-600",
+      activeText: "text-orange-700",
+      desc: "মুদ্রণযোগ্য লেখার ঝুড়ি",
+      badge: currentUser?.printBasketPostIds.length || 0
+    },
+    {
+      id: "balance" as const,
+      label: "ব্যালেন্স",
+      icon: Coins,
+      color: "amber",
+      bgColor: "bg-amber-50 text-amber-700 border border-amber-100",
+      hoverColor: "hover:bg-amber-50/50 hover:text-amber-600",
+      activeText: "text-amber-700",
+      desc: "কয়েন ক্রয় ও লেনদেনের খতিয়ান",
+      badgeText: currentUser ? `${currentUser.coins} CC` : undefined
+    },
+    {
+      id: "writer-panel" as const,
+      label: currentUser?.role === "writer" ? "লেখক প্যানেল" : "লেখক আবেদন",
+      icon: PenTool,
+      color: "pink",
+      bgColor: "bg-pink-50 text-pink-700 border border-pink-100",
+      hoverColor: "hover:bg-pink-50/50 hover:text-pink-600",
+      activeText: "text-pink-700",
+      desc: currentUser?.role === "writer" ? "লেখা প্রকাশ ও আয় পরিসংখ্যান" : "লেখক হতে আবেদন করুন"
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-orange-100 selection:text-orange-800 text-slate-800">
@@ -399,60 +519,123 @@ export default function App() {
       {/* Main Flex Layout with Left Sidebar */}
       <div className="flex-1 flex flex-row min-h-0 relative">
         {/* Left Sidebar navigation */}
-        <aside className="w-20 bg-white border-r border-slate-200 flex flex-col items-center py-6 gap-6 sticky top-0 h-[calc(100vh-36px)] shrink-0 hidden md:flex z-30 shadow-xs">
-          <div className="bg-violet-600 text-white p-3 rounded-2xl shadow-sm">
-            <Printer className="w-6 h-6 animate-pulse" />
+        <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between py-6 sticky top-0 h-[calc(100vh-36px)] shrink-0 hidden md:flex z-30 shadow-xs">
+          <div className="flex flex-col gap-6 px-4">
+            {/* Header / Logo */}
+            <div className="flex items-center gap-3 px-2">
+              <div className="bg-gradient-to-tr from-violet-600 to-indigo-600 text-white p-2.5 rounded-2xl shadow-sm shrink-0">
+                <Printer className="w-5 h-5 animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-sm font-serif font-bold text-slate-800 leading-none">Read-to-Print</h1>
+                <p className="text-[10px] text-slate-400 font-medium tracking-wide mt-1.5">মুদ্রণযোগ্য সাহিত্য হাব</p>
+              </div>
+            </div>
+
+            <div className="h-px bg-slate-100 my-1" />
+
+            {/* Nav Items */}
+            <nav className="flex flex-col gap-1.5">
+              {menuItems.map((item) => {
+                const IconComponent = item.icon;
+                const isActive = activeNavView === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      if (item.id !== "home" && item.id !== "authors" && !currentUser) {
+                        setIsAuthOpen(true);
+                      } else {
+                        setActiveNavView(item.id);
+                        setSelectedAuthorForView(null); // Reset when navigating
+                      }
+                    }}
+                    className={`w-full text-left p-3 rounded-2xl transition-all cursor-pointer flex items-center justify-between group border border-transparent ${
+                      isActive
+                        ? item.bgColor
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <IconComponent className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
+                        isActive ? item.activeText : "text-slate-400"
+                      }`} />
+                      <div className="min-w-0">
+                        <p className={`text-xs font-bold leading-none ${isActive ? item.activeText : "text-slate-700"}`}>
+                          {item.label}
+                        </p>
+                        <p className="text-[9px] text-slate-400 truncate mt-1">
+                          {item.desc}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Badge */}
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="text-[9px] bg-orange-500 text-white font-bold font-mono px-2 py-0.5 rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                    {item.badgeText !== undefined && (
+                      <span className="text-[9px] bg-amber-100 text-amber-800 font-bold font-mono px-1.5 py-0.5 rounded-md">
+                        {item.badgeText}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+
+              {currentUser?.role === "admin" && (
+                <button
+                  onClick={() => setActiveNavView("admin")}
+                  className={`w-full text-left p-3 rounded-2xl transition-all cursor-pointer flex items-center gap-3 border border-transparent ${
+                    activeNavView === "admin"
+                      ? "bg-rose-50 text-rose-700 border border-rose-100"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-850"
+                  }`}
+                >
+                  <ShieldAlert className={`w-5 h-5 shrink-0 ${activeNavView === "admin" ? "text-rose-600" : "text-slate-400"}`} />
+                  <div>
+                    <p className="text-xs font-bold leading-none text-rose-700">অ্যাডমিন প্যানেল</p>
+                    <p className="text-[9px] text-slate-400 mt-1">রিকোয়েস্ট ও ইউজার কন্ট্রোল</p>
+                  </div>
+                </button>
+              )}
+            </nav>
           </div>
 
-          <div className="w-8 h-px bg-slate-200 my-2" />
-
-          {/* Nav Items */}
-          <button
-            onClick={() => setActiveNavView("home")}
-            className={`p-3.5 rounded-2xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 group ${
-              activeNavView === "home"
-                ? "bg-violet-50 text-violet-600 border border-violet-100"
-                : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-            }`}
-            title="হোমপেজ (Home)"
-          >
-            <BookOpen className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            <span className="text-[9px] font-bold">Home</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (!currentUser) {
-                setIsAuthOpen(true);
-              } else {
-                setActiveNavView("profile");
-              }
-            }}
-            className={`p-3.5 rounded-2xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 group ${
-              activeNavView === "profile"
-                ? "bg-emerald-50 text-emerald-600 border border-emerald-105"
-                : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-            }`}
-            title="আমার প্রোফাইল (Profile)"
-          >
-            <User className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            <span className="text-[9px] font-bold">Profile</span>
-          </button>
-
-          {currentUser?.role === "admin" && (
-            <button
-              onClick={() => setActiveNavView("admin")}
-              className={`p-3.5 rounded-2xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 group ${
-                activeNavView === "admin"
-                  ? "bg-orange-50 text-orange-600 border border-orange-105"
-                  : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-              }`}
-              title="অ্যাডমিন প্যানেল"
-            >
-              <ShieldAlert className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span className="text-[9px] font-bold">Admin</span>
-            </button>
-          )}
+          {/* Sidebar Footer User Details */}
+          <div className="px-4">
+            {currentUser ? (
+              <div className="bg-slate-50 border border-slate-150 p-3 rounded-2xl flex items-center justify-between gap-2 shadow-2xs">
+                <div className="min-w-0 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-xs font-serif uppercase shrink-0">
+                    {currentUser.displayName.substring(0, 1)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-slate-700 truncate leading-none">{currentUser.displayName}</p>
+                    <p className="text-[9px] text-slate-400 capitalize mt-1 truncate">
+                      {currentUser.role === "writer" ? "✍️ লেখক" : currentUser.role === "admin" ? "🛡️ অ্যাডমিন" : "📖 পাঠক"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="p-1.5 hover:bg-red-50 text-red-500 hover:text-red-650 rounded-xl transition-colors cursor-pointer shrink-0"
+                  title="লগআউট"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsAuthOpen(true)}
+                className="w-full py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg transition-all cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                লগইন / নিবন্ধন
+              </button>
+            )}
+          </div>
         </aside>
 
         {/* Main Content viewport */}
@@ -462,71 +645,23 @@ export default function App() {
             <div className="max-w-[1550px] mx-auto px-4 md:px-8 h-full flex items-center justify-between">
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <div className="md:hidden bg-violet-600 p-2 rounded-xl text-white shadow-xs">
+                  <div className="md:hidden bg-gradient-to-r from-violet-600 to-indigo-600 p-2 rounded-xl text-white shadow-xs">
                     <Printer className="w-5 h-5" />
                   </div>
                   <div>
-                    <h1 className="text-lg md:text-xl font-serif font-bold text-slate-800 leading-none">Read-to-Print</h1>
-                    <p className="text-[10px] text-slate-400 font-medium tracking-wide mt-0.5">Where Literature Meets physical Print Layouts</p>
+                    <h1 className="text-base md:text-lg font-serif font-bold text-slate-800 leading-none">Read-to-Print</h1>
+                    <p className="text-[10px] text-slate-400 font-medium tracking-wide mt-1.5">Where Literature Meets Physical Print Layouts</p>
                   </div>
                 </div>
-
-                {/* Central Horizontal Menu/Navigation */}
-                <nav className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl shadow-xs text-xs">
-                  <button
-                    id="nav-home-btn"
-                    onClick={() => setActiveNavView("home")}
-                    className={`px-4 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                      activeNavView === "home"
-                        ? "bg-white text-violet-700 shadow-2xs"
-                        : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    <BookOpen className="w-3.5 h-3.5 text-violet-500" />
-                    হোমপেজ (Home)
-                  </button>
-                  <button
-                    id="nav-profile-btn"
-                    onClick={() => {
-                      if (!currentUser) {
-                        setIsAuthOpen(true);
-                      } else {
-                        setActiveNavView("profile");
-                      }
-                    }}
-                    className={`px-4 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                      activeNavView === "profile"
-                        ? "bg-white text-emerald-700 shadow-2xs"
-                        : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    <User className="w-3.5 h-3.5 text-emerald-600" />
-                    আমার প্রোফাইল (Profile)
-                  </button>
-                  {currentUser?.role === "admin" && (
-                    <button
-                      id="nav-admin-btn"
-                      onClick={() => setActiveNavView("admin")}
-                      className={`px-4 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                        activeNavView === "admin"
-                          ? "bg-white text-orange-700 shadow-2xs"
-                          : "text-slate-500 hover:text-slate-800"
-                      }`}
-                    >
-                      <ShieldAlert className="w-3.5 h-3.5 text-orange-500" />
-                      অ্যাডমিন
-                    </button>
-                  )}
-                </nav>
               </div>
 
+              {/* Header Right Widgets */}
               <div className="flex items-center gap-3">
                 {currentUser ? (
-                  <div className="flex items-center gap-3 bg-slate-100 border border-slate-200 p-1.5 rounded-full">
+                  <div className="flex items-center gap-3 bg-slate-50 border border-slate-150 p-1 rounded-full">
                     <button
-                      id="header-wallet-btn"
-                      onClick={() => setIsCoinsOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-50 rounded-full shadow-2xs transition-all text-xs font-bold text-slate-700 cursor-pointer"
+                      onClick={() => setActiveNavView("balance")}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-full shadow-3xs transition-all text-xs font-bold text-slate-700 cursor-pointer"
                     >
                       <Coins className="w-4 h-4 text-orange-500" />
                       <span className="font-mono">{currentUser.coins} CC</span>
@@ -534,16 +669,17 @@ export default function App() {
 
                     <div className="w-px h-4 bg-slate-300"></div>
 
-                    <div className="flex items-center gap-2 pr-3 pl-1 text-xs">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                      <span className="font-semibold text-slate-700 max-w-[120px] truncate">{currentUser.displayName}</span>
-                      <span className="text-[10px] text-slate-400">({currentUser.role})</span>
-                    </div>
+                    <button
+                      onClick={() => setActiveNavView("profile")}
+                      className="flex items-center gap-2 pr-3 pl-1 text-xs hover:text-violet-600 transition-colors"
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="font-semibold text-slate-700 max-w-[120px] truncate leading-none">{currentUser.displayName}</span>
+                    </button>
 
                     <button
-                      id="app-logout-btn"
                       onClick={handleLogout}
-                      className="p-1.5 hover:bg-red-50 text-red-500 hover:text-red-600 rounded-full transition-colors cursor-pointer"
+                      className="md:hidden p-1.5 hover:bg-red-50 text-red-500 rounded-full transition-colors cursor-pointer"
                       title="লগআউট"
                     >
                       <LogOut className="w-4 h-4" />
@@ -551,9 +687,8 @@ export default function App() {
                   </div>
                 ) : (
                   <button
-                    id="header-login-trigger-btn"
                     onClick={() => setIsAuthOpen(true)}
-                    className="py-2 px-4 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                    className="py-2 px-4 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer animate-pulse"
                   >
                     <LogIn className="w-4 h-4" />
                     লগইন / নিবন্ধন
@@ -562,6 +697,53 @@ export default function App() {
               </div>
             </div>
           </header>
+
+          {/* Mobile responsive scrollable submenu (only visible on mobile) */}
+          <div className="md:hidden flex items-center gap-2 overflow-x-auto bg-white border-b border-slate-200 p-2.5 scrollbar-none shrink-0 sticky top-16 z-35 shadow-2xs">
+            {menuItems.map((item) => {
+              const IconComponent = item.icon;
+              const isActive = activeNavView === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    if (item.id !== "home" && item.id !== "authors" && !currentUser) {
+                      setIsAuthOpen(true);
+                    } else {
+                      setActiveNavView(item.id);
+                      setSelectedAuthorForView(null);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-[11px] whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer shrink-0 border ${
+                    isActive
+                      ? item.bgColor
+                      : "bg-slate-50 text-slate-500 border-slate-150 hover:bg-slate-100"
+                  }`}
+                >
+                  <IconComponent className="w-3.5 h-3.5" />
+                  <span>{item.label}</span>
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span className="ml-1 bg-orange-500 text-white text-[9px] px-1 rounded-full font-mono font-bold">
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {currentUser?.role === "admin" && (
+              <button
+                onClick={() => setActiveNavView("admin")}
+                className={`px-3 py-1.5 rounded-xl font-bold text-[11px] whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer shrink-0 border ${
+                  activeNavView === "admin"
+                    ? "bg-rose-50 text-rose-700 border-rose-100"
+                    : "bg-slate-50 text-slate-500 border-slate-150"
+                }`}
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>অ্যাডমিন</span>
+              </button>
+            )}
+          </div>
 
           {/* 3. HERO BANNER */}
           <section className="bg-white border-b border-slate-200 py-6 shrink-0">
@@ -780,71 +962,743 @@ export default function App() {
 
               </div>
             ) : activeNavView === "profile" ? (
-              /* --- MY PROFILE VIEW: Includes Reader Toggle & Writer Toggle --- */
-              <div className="max-w-4xl mx-auto">
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-                  {/* Outer Section Toggle Header */}
-                  <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50">
-                    <div className="flex items-center gap-2">
-                      <User className="w-5 h-5 text-violet-600" />
+              /* --- MY PROFILE VIEW --- */
+              <div className="max-w-3xl mx-auto">
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+                  <div className="h-32 bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 relative">
+                    <div className="absolute -bottom-10 left-8">
+                      <div className="w-20 h-20 rounded-2xl bg-white p-1 border-2 border-white shadow-md">
+                        <div className="w-full h-full rounded-xl bg-violet-100 text-violet-700 font-serif font-bold text-3xl flex items-center justify-center uppercase">
+                          {currentUser?.displayName ? currentUser.displayName.substring(0,1) : "P"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-14 p-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                       <div>
-                        <h2 className="text-base font-serif font-bold text-slate-800">আমার প্রোফাইল ড্যাশবোর্ড (My Profile)</h2>
-                        <p className="text-xs text-slate-400">সহজেই পাঠক এবং লেখক অংশ টগল করুন</p>
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-1.5 font-serif">
+                          {currentUser?.displayName}
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-1 font-mono">{currentUser?.email}</p>
+                      </div>
+                      <span className="self-start sm:self-auto px-3.5 py-1.5 bg-violet-50 text-violet-700 rounded-full font-bold text-xs uppercase tracking-wider">
+                        {currentUser?.role === "writer" ? "✍️ রেজিস্টার্ড লেখক" : currentUser?.role === "admin" ? "🛡️ সুপার অ্যাডমিন" : "📖 সম্মানিত পাঠক"}
+                      </span>
+                    </div>
+
+                    {/* Bio Editor Section */}
+                    <div className="bg-slate-50 border border-slate-150 p-5 rounded-2xl mb-8">
+                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">আপনার পরিচিতি ও বায়োগ্রাফি</h3>
+                      {appSamples === "editing" ? (
+                        <div className="space-y-3">
+                          <input
+                            type="text"
+                            value={currentUser?.displayName || ""}
+                            onChange={(e) => {
+                              const updated = { ...currentUser!, displayName: e.target.value };
+                              setCurrentUser(updated);
+                            }}
+                            placeholder="আপনার নাম..."
+                            className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-violet-500/20 outline-hidden font-bold"
+                          />
+                          <textarea
+                            value={currentUser?.bio || ""}
+                            onChange={(e) => {
+                              const updated = { ...currentUser!, bio: e.target.value };
+                              setCurrentUser(updated);
+                            }}
+                            placeholder="আপনার বায়োগ্রাফি লিখুন..."
+                            className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-violet-500/20 outline-hidden min-h-[100px]"
+                          />
+                          <button
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`/api/users/${currentUser?.uid}`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ displayName: currentUser?.displayName, bio: currentUser?.bio })
+                                });
+                                if (res.ok) {
+                                  alert("প্রোফাইল সফলভাবে আপডেট হয়েছে!");
+                                  setAppSamples(""); // Exit editing mode
+                                  fetchAdminData();
+                                }
+                              } catch (err) { console.error(err); }
+                            }}
+                            className="py-2 px-4 bg-violet-600 text-white rounded-xl text-xs font-bold hover:bg-violet-700 cursor-pointer transition-all"
+                          >
+                            সংরক্ষণ করুন (Save)
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-start gap-4">
+                          <p className="text-sm text-slate-600 italic leading-relaxed">
+                            "{currentUser?.bio || "কোনো বায়োগ্রাফি সেট করা নেই। 'এডিট বায়ো' বাটনে ক্লিক করে প্রোফাইল সাজাতে পারেন।"}"
+                          </p>
+                          <button
+                            onClick={() => setAppSamples("editing")}
+                            className="text-xs text-violet-600 font-bold hover:underline shrink-0"
+                          >
+                            এডিট বায়ো
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stats Dashboard */}
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">পাঠক পরিসংখ্যান (Stats Dashboard)</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center">
+                        <p className="text-2xl font-bold text-violet-600 font-mono">
+                          {currentUser?.bookmarkedPostIds.length || 0}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1.5">বুকমার্ককৃত লেখা</p>
+                      </div>
+                      <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center">
+                        <p className="text-2xl font-bold text-emerald-600 font-mono">
+                          {currentUser?.followingAuthors.length || 0}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1.5">অনুসৃত লেখক</p>
+                      </div>
+                      <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center">
+                        <p className="text-2xl font-bold text-orange-500 font-mono">
+                          {currentUser?.printBasketPostIds.length || 0}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1.5">বাস্কেটে রয়েছে</p>
+                      </div>
+                      <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center">
+                        <p className="text-2xl font-bold text-amber-500 font-mono">
+                          {currentUser?.coins || 0}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1.5">বর্তমান কয়েন</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : activeNavView === "authors" ? (
+              /* --- AUTHORS DIRECTORY VIEW --- */
+              <div className="max-w-5xl mx-auto">
+                {selectedAuthorForView ? (
+                  /* Single Author articles details view */
+                  <div>
+                    <button
+                      onClick={() => setSelectedAuthorForView(null)}
+                      className="mb-6 py-2 px-4 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-600 flex items-center gap-1.5 cursor-pointer transition-all border border-slate-200"
+                    >
+                      <ArrowRight className="w-4 h-4 rotate-180" />
+                      সকল লেখকদের তালিকায় ফিরে যান
+                    </button>
+
+                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs mb-6 flex flex-col sm:flex-row items-center gap-4">
+                      <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-750 flex items-center justify-center font-bold text-2xl font-serif">
+                        {selectedAuthorForView.displayName.substring(0,1)}
+                      </div>
+                      <div className="flex-1 text-center sm:text-left">
+                        <h2 className="text-xl font-bold font-serif text-slate-800">{selectedAuthorForView.displayName}</h2>
+                        <p className="text-xs text-slate-500 mt-1 italic">"{selectedAuthorForView.bio || "লেখক সম্পর্কে অতিরিক্ত তথ্য নেই।"}"</p>
+                      </div>
+                      <button
+                        onClick={() => handleAction("follow", undefined, selectedAuthorForView.uid)}
+                        className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          currentUser?.followingAuthors.includes(selectedAuthorForView.uid)
+                            ? "bg-slate-100 text-slate-500 border border-slate-200"
+                            : "bg-indigo-650 text-white hover:bg-indigo-700 shadow-xs"
+                        }`}
+                      >
+                        {currentUser?.followingAuthors.includes(selectedAuthorForView.uid) ? "✓ অনুসরণ করছেন" : "ফলো করুন"}
+                      </button>
+                    </div>
+
+                    <h3 className="text-base font-bold font-serif text-slate-800 mb-4">
+                      {selectedAuthorForView.displayName}-এর প্রকাশিত লেখাসমূহ:
+                    </h3>
+
+                    {posts.filter(p => p.authorId === selectedAuthorForView.uid).length === 0 ? (
+                      <div className="bg-white p-12 text-center text-slate-400 border border-slate-200 rounded-2xl">
+                        কোনো লেখা এখনও প্রকাশিত হয়নি।
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {posts.filter(p => p.authorId === selectedAuthorForView.uid).map(post => {
+                          const isBookmarked = currentUser?.bookmarkedPostIds.includes(post.id) || false;
+                          const isAdded = currentUser?.printBasketPostIds.includes(post.id) || false;
+                          return (
+                            <div key={post.id} className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-indigo-300 transition-all flex flex-col justify-between">
+                              <div>
+                                <h4 onClick={() => handleOpenPostReader(post)} className="text-base font-bold font-serif hover:text-indigo-600 transition-colors cursor-pointer mb-2">
+                                  {post.title}
+                                </h4>
+                                <p className="text-xs text-slate-500 leading-relaxed line-clamp-2 mb-4">{post.excerpt}</p>
+                              </div>
+                              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-[10px] text-slate-400 font-mono">👁️ {post.viewCount} ভিউ • 🖨️ {post.addToPrintCount} প্রিন্টস</span>
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleOpenPostReader(post)} className="py-1 px-2.5 bg-slate-50 text-slate-600 border border-slate-150 rounded-lg text-xs font-semibold">পড়ুন</button>
+                                  {currentUser?.uid !== post.authorId && (
+                                    <button
+                                      onClick={() => handleAction("basket", post.id)}
+                                      className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                                        isAdded ? "bg-slate-800 text-white" : "bg-orange-500 text-white hover:bg-orange-600"
+                                      }`}
+                                    >
+                                      <Printer className="w-3 h-3" />
+                                      {isAdded ? "প্রিন্টেড" : "অ্যাড টু প্রিন্ট"}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Author profiles directory list grid */
+                  <div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                      <div>
+                        <h2 className="text-xl font-bold font-serif text-slate-800">আমাদের সম্মানিত লেখকবৃন্দ</h2>
+                        <p className="text-xs text-slate-400 mt-1">লেখকদের প্রোফাইল দেখুন ও তাদের চমৎকার সৃষ্টিগুলো অনুসরণ করুন</p>
+                      </div>
+
+                      {/* Author search box */}
+                      <div className="relative w-full sm:w-72">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="লেখক অনুসন্ধান করুন..."
+                          value={authorSearchQuery}
+                          onChange={(e) => setAuthorSearchQuery(e.target.value)}
+                          className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+                        />
                       </div>
                     </div>
 
-                    <div className="flex bg-slate-200 p-1.5 rounded-2xl text-xs font-bold gap-1 shadow-inner">
-                      <button
-                        id="profile-toggle-reader"
-                        onClick={() => setProfileSection("reader")}
-                        className={`px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-                          profileSection === "reader"
-                            ? "bg-white text-emerald-750 shadow-2xs font-extrabold"
-                            : "text-slate-500 hover:text-slate-850"
-                        }`}
-                      >
-                        <BookOpen className="w-4 h-4 text-emerald-600" />
-                        পাঠক অংশ (Reader)
-                      </button>
-                      <button
-                        id="profile-toggle-writer"
-                        onClick={() => setProfileSection("writer")}
-                        className={`px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-                          profileSection === "writer"
-                            ? "bg-white text-orange-650 shadow-2xs font-extrabold"
-                            : "text-slate-500 hover:text-slate-850"
-                        }`}
-                      >
-                        <PenTool className="w-4 h-4 text-orange-500" />
-                        লেখক অংশ (Writer)
-                      </button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {adminData.users.filter(u => u.role === "writer" && u.displayName.toLowerCase().includes(authorSearchQuery.toLowerCase())).map((writer) => {
+                        const isFollowing = currentUser?.followingAuthors.includes(writer.uid) || false;
+                        const writerPostsCount = posts.filter(p => p.authorId === writer.uid).length;
+                        return (
+                          <div key={writer.uid} className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-indigo-250 hover:shadow-sm transition-all flex flex-col justify-between shadow-3xs">
+                            <div className="flex items-start gap-3">
+                              <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-lg font-serif uppercase shrink-0">
+                                {writer.displayName.substring(0,1)}
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="font-bold text-slate-800 truncate font-serif">{writer.displayName}</h3>
+                                <p className="text-[10px] text-slate-400 font-mono tracking-wide mt-1 uppercase">✍️ Registered Writer</p>
+                              </div>
+                            </div>
+
+                            <p className="text-xs text-slate-500 line-clamp-3 mt-3 italic mb-4 leading-relaxed">
+                              "{writer.bio || "কোনো বায়োগ্রাফি সেট করা নেই।"}"
+                            </p>
+
+                            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                              <div className="text-[10px] text-slate-400 font-mono">
+                                <p className="font-bold text-indigo-600">{writerPostsCount}টি প্রবন্ধ</p>
+                              </div>
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => setSelectedAuthorForView(writer)}
+                                  className="py-1 px-2 text-[11px] bg-indigo-50 text-indigo-700 font-bold rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-colors cursor-pointer"
+                                >
+                                  লেখাগুলো দেখুন
+                                </button>
+                                <button
+                                  onClick={() => handleAction("follow", undefined, writer.uid)}
+                                  className={`py-1 px-2.5 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                                    isFollowing ? "bg-slate-100 text-slate-500 border border-slate-200" : "bg-indigo-600 text-white hover:bg-indigo-700"
+                                  }`}
+                                >
+                                  {isFollowing ? "✓ ফলো করছেন" : "ফলো"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : activeNavView === "basket" ? (
+              /* --- MY BASKET / SIMULATED PHYSICAL PRINTER VIEW --- */
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-slate-150 bg-slate-50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ShoppingBag className="w-5 h-5 text-orange-500" />
+                      <div>
+                        <h2 className="text-lg font-bold font-serif text-slate-800">আমার প্রিন্টিং বাস্কেট (Print Basket)</h2>
+                        <p className="text-xs text-slate-400">আপনার বাস্কেটে থাকা লেখাগুলো ফিজিক্যাল প্রিন্ট করুন</p>
+                      </div>
+                    </div>
+                    <span className="bg-orange-100 text-orange-700 font-mono font-bold text-xs px-3 py-1 rounded-full">
+                      {currentUser?.printBasketPostIds.length || 0} টি লেখা
+                    </span>
+                  </div>
+
+                  {printingState !== "idle" ? (
+                    /* Printer Live Simulation Stream */
+                    <div className="p-8 text-center bg-slate-900 text-slate-100 font-mono min-h-[400px] flex flex-col justify-between rounded-b-3xl">
+                      <div className="border border-slate-700 p-4 rounded-xl bg-slate-950 max-w-xl mx-auto w-full text-left">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                          <span className="text-xs font-bold text-slate-300 tracking-wider uppercase font-mono">LOCAL SYSTEM PRINTER CONNECTED</span>
+                        </div>
+                        <div className="space-y-1.5 text-xs text-emerald-400 max-h-[180px] overflow-y-auto font-mono">
+                          <p className="text-slate-500">[{new Date().toLocaleTimeString()}] Establishing print protocol...</p>
+                          {printProgress >= 15 && <p>✔ [PROTOCOL] Core page-dimensions validated.</p>}
+                          {printProgress >= 35 && <p className="text-yellow-400">▶ Loading high-gloss A4 premium ivory papers...</p>}
+                          {printProgress >= 50 && <p>✔ [FEEDER] Loaded 80gsm sheets securely.</p>}
+                          {printProgress >= 65 && <p className="text-indigo-400 font-bold">▶ Core thermal ink-jet nozzle calibrating...</p>}
+                          {printProgress >= 80 && <p className="text-emerald-300 animate-pulse">▶ Printing: Page 1/3... Formatting margins... Done.</p>}
+                          {printProgress >= 95 && <p className="text-emerald-300 animate-pulse">▶ Printing: Page 2/3... Binding booklet adhesive... Done.</p>}
+                          {printProgress === 100 && <p className="text-slate-200">✔ [SYSTEM] Booklet generated. Output tray unlocked.</p>}
+                        </div>
+                      </div>
+
+                      {/* Progress meter */}
+                      <div className="max-w-md mx-auto w-full space-y-4 my-6">
+                        <div className="flex justify-between items-center text-xs font-bold font-mono">
+                          <span className="text-orange-400 uppercase tracking-widest">
+                            {printingState === "processing" ? "কাগজ প্রক্রিয়াকরণ..." : printingState === "paper" ? "মুদ্রণযোগ্য উপাদান লোড হচ্ছে..." : printingState === "printing" ? "মুদ্রণ ও বাইন্ডিং চলছে..." : "সম্পূর্ণ হয়েছে!"}
+                          </span>
+                          <span>{printProgress}%</span>
+                        </div>
+                        <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                          <div className="h-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-300 rounded-full" style={{ width: `${printProgress}%` }} />
+                        </div>
+                      </div>
+
+                      {/* Printed receipt summary */}
+                      {printingState === "success" && printedReceipt && (
+                        <div className="bg-white text-slate-800 p-6 rounded-2xl border border-slate-200 max-w-md mx-auto w-full text-left shadow-lg">
+                          <div className="text-center pb-4 border-b border-dashed border-slate-300">
+                            <h3 className="font-serif font-bold text-base tracking-tight text-slate-800">READ-TO-PRINT INVOICE</h3>
+                            <p className="text-[10px] text-slate-400 font-mono mt-1">Receipt ID: {printedReceipt.receiptId}</p>
+                            <p className="text-[9px] text-slate-400 font-mono mt-0.5">{printedReceipt.timestamp}</p>
+                          </div>
+                          <div className="py-4 space-y-2 text-xs">
+                            <p className="font-bold text-slate-500">মুদ্রিত উপাদানসমূহ:</p>
+                            {printedReceipt.items.map((it: any, index: number) => (
+                              <div key={index} className="flex justify-between gap-2">
+                                <span className="truncate max-w-[200px]">{it.title}</span>
+                                <span className="font-mono text-slate-500 shrink-0">{it.priceCoins} CC</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="pt-3 border-t border-dashed border-slate-300 flex justify-between items-center text-xs font-bold font-mono">
+                            <span>মোট খরচের কয়েন:</span>
+                            <span className="text-orange-600">{printedReceipt.totalCoins} CC</span>
+                          </div>
+                          <p className="text-[9px] text-slate-400 mt-4 leading-relaxed text-center">
+                            * বইয়ের প্রিন্ট কপি সফলভাবে জেনারেট হয়েছে। এই বিলিং রিসিপ্টটি আপনার অফলাইন ডায়েরিতে সংরক্ষিত রয়েছে।
+                          </p>
+                          <button
+                            onClick={() => {
+                              setPrintingState("idle");
+                              setPrintedReceipt(null);
+                            }}
+                            className="w-full mt-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold cursor-pointer transition-all"
+                          >
+                            ড্যাশবোর্ডে ফিরে যান
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Default Basket list view */
+                    <div className="p-6">
+                      {posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).length === 0 ? (
+                        <div className="text-center py-16 text-slate-400">
+                          <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <ShoppingBag className="w-8 h-8 text-slate-300" />
+                          </div>
+                          <h3 className="font-serif font-bold text-slate-700 text-base">আপনার বাস্কেটটি সম্পূর্ণ খালি</h3>
+                          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">হোমপেজে গিয়ে আপনার পছন্দের লেখাগুলো বাস্কেটে যোগ করুন ফিজিক্যাল প্রিন্ট নেওয়ার উদ্দেশ্যে।</p>
+                          <button
+                            onClick={() => setActiveNavView("home")}
+                            className="mt-6 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+                          >
+                            হোম পেজে লেখা খুঁজুন
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                          {/* Basket items stack */}
+                          <div className="lg:col-span-7 space-y-3">
+                            {posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).map(post => (
+                              <div key={post.id} className="bg-white p-4 rounded-2xl border border-slate-200 flex justify-between items-center gap-4 hover:border-orange-200 transition-colors">
+                                <div className="min-w-0">
+                                  <h4 onClick={() => handleOpenPostReader(post)} className="font-bold text-slate-800 truncate font-serif text-sm cursor-pointer hover:text-orange-600">{post.title}</h4>
+                                  <p className="text-[10px] text-slate-400 mt-1">লেখক: {post.authorName}</p>
+                                </div>
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">{post.priceCoins} CC</span>
+                                  <button
+                                    onClick={() => handleAction("basket", post.id)}
+                                    className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"
+                                    title="রিমুভ করুন"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Summary checkout panel */}
+                          <div className="lg:col-span-5 bg-slate-50 border border-slate-150 p-6 rounded-2xl">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">অর্ডার সারাংশ (Order Summary)</h3>
+                            <div className="space-y-3 text-xs mb-6 font-mono">
+                              <div className="flex justify-between text-slate-500">
+                                <span>মোট নির্বাচিত লেখা:</span>
+                                <span>{posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).length} টি</span>
+                              </div>
+                              <div className="flex justify-between text-slate-500">
+                                <span>শিপিং চার্জ:</span>
+                                <span className="text-emerald-600 font-bold">ফ্রি (Promo Active)</span>
+                              </div>
+                              <div className="h-px bg-slate-200 my-2" />
+                              <div className="flex justify-between text-slate-700 font-bold text-sm">
+                                <span>প্রয়োজনীয় কয়েন:</span>
+                                <span className="text-orange-600 font-bold font-mono">
+                                  {posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).reduce((a, b) => a + b.priceCoins, 0)} CC
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-slate-400 text-[10px]">
+                                <span>সমানুপাতিক টাকা:</span>
+                                <span className="font-mono">৳ {posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).reduce((a, b) => a + b.priceMoney, 0)}</span>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={async () => {
+                                const totalCoins = posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).reduce((a, b) => a + b.priceCoins, 0);
+                                if (currentUser!.coins < totalCoins) {
+                                  alert("দুঃখিত! আপনার ওয়ালেটে পর্যাপ্ত কয়েন নেই। অনুগ্রহ করে কয়েন রিচার্জ করুন।");
+                                  setActiveNavView("balance");
+                                  return;
+                                }
+
+                                // Trigger Printer simulation progress
+                                setPrintingState("processing");
+                                setPrintProgress(0);
+                                
+                                let progressVal = 0;
+                                const interval = setInterval(() => {
+                                  progressVal += 10;
+                                  if (progressVal <= 25) {
+                                    setPrintingState("processing");
+                                  } else if (progressVal <= 50) {
+                                    setPrintingState("paper");
+                                  } else if (progressVal <= 90) {
+                                    setPrintingState("printing");
+                                  }
+                                  
+                                  setPrintProgress(Math.min(100, progressVal));
+                                  
+                                  if (progressVal >= 100) {
+                                    clearInterval(interval);
+                                    setPrintingState("success");
+                                    
+                                    // Generate print invoice details
+                                    const itemsPrinted = posts.filter(p => currentUser?.printBasketPostIds.includes(p.id));
+                                    setPrintedReceipt({
+                                      receiptId: "RTPI-" + Math.floor(Math.random() * 900000 + 100000),
+                                      timestamp: new Date().toLocaleString("bn-BD"),
+                                      items: itemsPrinted,
+                                      totalCoins: totalCoins
+                                    });
+
+                                    // Deduct coins & Sync backend
+                                    fetch(`/api/users/${currentUser!.uid}/action`, {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ actionType: "checkout_basket" })
+                                    }).then(res => res.json()).then(data => {
+                                      if (data.success) {
+                                        // Update local session
+                                        const updatedUser = { ...currentUser!, coins: currentUser!.coins - totalCoins, printBasketPostIds: [] };
+                                        setCurrentUser(updatedUser);
+                                        fetchAdminData();
+                                      }
+                                    });
+                                  }
+                                }, 500);
+                              }}
+                              className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-extrabold shadow-xs hover:shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <Printer className="w-4 h-4" />
+                              মুদ্রণ নিশ্চিত করুন ও সরাসরি প্রিন্ট করুন
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : activeNavView === "balance" ? (
+              /* --- WALLET & COIN STORE VIEW --- */
+              <div className="max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                  
+                  {/* Wallet Cards & Instant Store */}
+                  <div className="md:col-span-7 space-y-6">
+                    <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs">
+                      <h3 className="text-sm font-bold text-slate-700 font-serif mb-4 flex items-center gap-1.5">
+                        <Wallet className="w-4 h-4 text-violet-500" />
+                        আমার কয়েন ওয়ালেট
+                      </h3>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gradient-to-tr from-orange-500 to-amber-500 text-white p-5 rounded-2xl relative overflow-hidden shadow-xs">
+                          <Coins className="w-12 h-12 absolute -right-3 -bottom-3 opacity-20" />
+                          <p className="text-[10px] uppercase font-bold opacity-80 leading-none">বর্তমান কয়েন</p>
+                          <p className="text-2xl font-black font-mono mt-2">{currentUser?.coins} CC</p>
+                          <p className="text-[9px] opacity-75 mt-1.5">১ কয়েন = ২ টাকা</p>
+                        </div>
+                        
+                        <div className="bg-gradient-to-tr from-purple-600 to-indigo-600 text-white p-5 rounded-2xl relative overflow-hidden shadow-xs">
+                          <Wallet className="w-12 h-12 absolute -right-3 -bottom-3 opacity-20" />
+                          <p className="text-[10px] uppercase font-bold opacity-80 leading-none">ওয়ালেট ব্যালেন্স</p>
+                          <p className="text-2xl font-black font-mono mt-2">৳ {currentUser?.currentBalance}</p>
+                          <p className="text-[9px] opacity-75 mt-1.5 font-bold">ব্যালেন্স ও কয়েন সমন্বিত</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Coins Purchase shop */}
+                    <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs">
+                      <h3 className="text-sm font-bold text-slate-700 font-serif mb-4 flex items-center gap-1.5">
+                        <Plus className="w-4 h-4 text-orange-500" />
+                        কয়েন ক্রয় করুন (Buy CC Coins)
+                      </h3>
+
+                      {paymentGatewayState === "selecting" && selectedBundle ? (
+                        /* Mobile payment gateway simulator */
+                        <div className="bg-slate-50 border border-slate-150 p-5 rounded-2xl space-y-4">
+                          <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                            <span className="text-xs font-bold text-slate-700">বিকাশ / নগদ / রকেট গেটওয়ে</span>
+                            <button onClick={() => setPaymentGatewayState("idle")} className="text-xs text-slate-400 hover:text-slate-600">বাতিল</button>
+                          </div>
+                          <div className="text-center py-2">
+                            <p className="text-[10px] text-slate-400">মোট পরিশোধ করতে হবে:</p>
+                            <p className="text-xl font-bold font-mono text-purple-700">৳ {selectedBundle.price}</p>
+                            <p className="text-[11px] text-slate-500 font-bold mt-1">কয়েন পাবেন: {selectedBundle.coins} CC</p>
+                          </div>
+                          <div className="space-y-3">
+                            <input
+                              type="tel"
+                              placeholder="আপনার ওয়ালেট নাম্বার দিন (যেমন: 017xxxxxxxx)"
+                              value={gatewayPhone}
+                              onChange={(e) => setGatewayPhone(e.target.value)}
+                              className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500/20 outline-hidden font-mono"
+                            />
+                            <input
+                              type="password"
+                              placeholder="পিন কোড দিন (যেমন: xxxx)"
+                              value={gatewayPin}
+                              onChange={(e) => setGatewayPin(e.target.value)}
+                              className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500/20 outline-hidden font-mono"
+                            />
+                            <button
+                              onClick={async () => {
+                                if (!gatewayPhone || !gatewayPin) {
+                                  alert("অনুগ্রহ করে মোবাইল নাম্বার এবং পিন প্রদান করুন।");
+                                  return;
+                                }
+                                setPaymentGatewayState("paying");
+                                try {
+                                  const response = await fetch(`/api/users/${currentUser?.uid}/action`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      actionType: "buy_coins",
+                                      amountCoins: selectedBundle.coins,
+                                      amountMoney: selectedBundle.price
+                                    })
+                                  });
+                                  if (response.ok) {
+                                    const data = await response.json();
+                                    setCurrentUser(data.user);
+                                    setTransactions(prev => [data.transaction, ...prev]);
+                                    setPaymentGatewayState("success");
+                                    setGatewayPhone("");
+                                    setGatewayPin("");
+                                    setTimeout(() => {
+                                      setPaymentGatewayState("idle");
+                                    }, 3000);
+                                  }
+                                } catch (e) {
+                                  console.error(e);
+                                  alert("গেটওয়ে ত্রুটি ঘটেছে।");
+                                  setPaymentGatewayState("idle");
+                                }
+                              }}
+                              className="w-full py-2.5 bg-purple-650 hover:bg-purple-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                            >
+                              {paymentGatewayState === "paying" ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : "পেমেন্ট নিশ্চিত করুন"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : paymentGatewayState === "success" ? (
+                        <div className="bg-emerald-50 border border-emerald-150 p-6 rounded-2xl text-center space-y-2">
+                          <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+                          <h4 className="text-sm font-bold text-emerald-800">পেমেন্ট সফল হয়েছে!</h4>
+                          <p className="text-xs text-emerald-600 font-bold leading-relaxed">কয়েন ওয়ালেট সফলভাবে রিচার্জ করা হয়েছে। আপনার ব্যালেন্স আপডেট করা হয়েছে।</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {[
+                            { coins: 100, price: 200, label: "স্টার্টার প্যাক" },
+                            { coins: 250, price: 500, label: "পপুলার প্যাক", popular: true },
+                            { coins: 600, price: 1000, label: "সুপার ভ্যালু (১০০ বোনাস!)" }
+                          ].map((bundle, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => {
+                                setSelectedBundle(bundle);
+                                setPaymentGatewayState("selecting");
+                              }}
+                              className={`w-full p-4 border rounded-2xl flex items-center justify-between text-left hover:bg-slate-50 transition-all cursor-pointer ${
+                                bundle.popular ? "border-orange-300 bg-orange-50/20" : "border-slate-200"
+                              }`}
+                            >
+                              <div>
+                                <p className="text-sm font-bold text-slate-700 font-mono flex items-center gap-1">
+                                  {bundle.coins} Coins
+                                  {bundle.popular && <span className="text-[9px] bg-orange-500 text-white px-1.5 py-0.5 rounded-xs font-bold">সেরা ডিল</span>}
+                                </p>
+                                <p className="text-xs text-slate-400 mt-1">{bundle.label}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-black text-purple-700 font-mono">৳{bundle.price}</span>
+                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Profile section body content */}
-                  <div className="p-6">
-                    {profileSection === "reader" ? (
-                      <ReaderPanel
-                        profile={currentUser!}
-                        posts={posts}
-                        authors={adminData.users.filter((u) => u.role === "writer")}
-                        onAction={handleAction}
-                        onOpenCoinsModal={() => setIsCoinsOpen(true)}
-                        onOpenPost={handleOpenPostReader}
-                        activeTab={readerTab}
-                        onTabChange={setReaderTab}
-                      />
+                  {/* Transaction History ledger */}
+                  <div className="md:col-span-5 bg-white rounded-3xl border border-slate-200 p-6 shadow-xs">
+                    <h3 className="text-sm font-bold text-slate-700 font-serif mb-4 flex items-center gap-1.5">
+                      <History className="w-4 h-4 text-purple-500" />
+                      লেনদেনের ইতিহাস (Transactions)
+                    </h3>
+
+                    {transactions.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-6 text-center">এখনও কোনো লেনদেনের ইতিহাস নেই।</p>
                     ) : (
-                      <WriterPanel
-                        profile={currentUser!}
-                        posts={posts}
-                        onOpenPost={handleOpenPostReader}
-                        onPublishPost={handlePublishPost}
-                        onWithdrawRequest={handleWithdrawRequest}
-                      />
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                        {transactions.map((tx) => (
+                          <div key={tx.id} className="p-3 border border-slate-100 rounded-xl flex justify-between items-center bg-slate-50 text-xs">
+                            <div>
+                              <p className="font-bold text-slate-700 leading-none">
+                                {tx.type === "buy_coins" ? "কয়েন রিচার্জ" : tx.type === "print_post" ? "প্রিন্ট বাস্কেটে খরচ" : "আর্টিকেল ক্রয়"}
+                              </p>
+                              <p className="text-[9px] text-slate-400 font-mono mt-1">
+                                {new Date(tx.timestamp).toLocaleString("bn-BD", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className={`font-bold font-mono ${tx.type === "buy_coins" ? "text-emerald-600" : "text-rose-500"}`}>
+                                {tx.type === "buy_coins" ? "+" : "-"}{tx.amountCoins} Coins
+                              </p>
+                              <p className="text-[10px] text-slate-400 font-mono mt-0.5">৳{tx.amountMoney}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
+
                 </div>
+              </div>
+            ) : activeNavView === "writer-panel" ? (
+              /* --- WRITER APPLICATION PANEL --- */
+              <div>
+                {currentUser?.role === "writer" ? (
+                  <div className="max-w-6xl mx-auto">
+                    <WriterPanel
+                      profile={currentUser!}
+                      posts={posts}
+                      onOpenPost={handleOpenPostReader}
+                      onPublishPost={handlePublishPost}
+                      onWithdrawRequest={handleWithdrawRequest}
+                    />
+                  </div>
+                ) : (
+                  <div className="max-w-xl mx-auto">
+                    <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-xs">
+                      <div className="text-center max-w-sm mx-auto mb-6">
+                        <div className="w-12 h-12 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center mx-auto mb-3">
+                          <PenTool className="w-6 h-6" />
+                        </div>
+                        <h2 className="text-lg font-serif font-bold text-slate-800">রিড-টু-প্রিন্ট লেখক প্রোগ্রাম</h2>
+                        <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">আপনার অসাধারণ সাহিত্যকর্ম প্রকাশ করুন, পাঠকদের সাথে যুক্ত হোন এবং রাজকীয় রয়্যালটি ও কয়েন আয় করুন।</p>
+                      </div>
+
+                      <form onSubmit={handleWriterApplicationSubmit} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-500 block">আপনার লেখার মূল ক্যাটাগরি</label>
+                          <select
+                            value={appCategory}
+                            onChange={(e) => setAppCategory(e.target.value)}
+                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 transition-all outline-hidden text-slate-700"
+                          >
+                            <option value="গল্প ও উপন্যাস">গল্প ও উপন্যাস (Fiction)</option>
+                            <option value="কবিতা ও আবৃত্তি">কবিতা ও আবৃত্তি (Poetry)</option>
+                            <option value="প্রবন্ধ ও কলাম">প্রবন্ধ ও কলাম (Essays / Columns)</option>
+                            <option value="ইতিহাস ও দর্শন">ইতিহাস ও দর্শন (History / Philosophy)</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-500 block">আপনার কাজের বিবরণ বা লিংক</label>
+                          <input
+                            type="text"
+                            placeholder="ফেসবুক পেজ, ব্লগ বা গুগল ড্রাইভ লিংক"
+                            value={appSamples}
+                            onChange={(e) => setAppSamples(e.target.value)}
+                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-pink-500/20 outline-hidden"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-500 block">কেন আপনি রিড-টু-প্রিন্টে লিখতে চান?</label>
+                          <textarea
+                            placeholder="আপনার অনুপ্রেরণা বা কিছু বাক্য লিখুন..."
+                            value={appMotivation}
+                            onChange={(e) => setAppMotivation(e.target.value)}
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-pink-500/20 outline-hidden min-h-[80px]"
+                            required
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full mt-4 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <PenTool className="w-4 h-4 shrink-0" />
+                          আবেদন জমা দিন ও লেখক প্যানেল সচল করুন
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               /* --- ADMIN PANEL VIEW --- */

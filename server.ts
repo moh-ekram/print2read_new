@@ -306,6 +306,12 @@ app.post("/api/users/:uid/action", (req, res) => {
 
   const user = db.users[userIdx];
 
+  if (actionType === "checkout_basket") {
+    user.printBasketPostIds = [];
+    saveDatabase(db);
+    return res.json({ success: true, user });
+  }
+
   if (actionType === "buy_coins") {
     const buyCoins = Number(amountCoins) || 100;
     const buyCost = Number(amountMoney) || 200;
