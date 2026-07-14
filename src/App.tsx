@@ -26,6 +26,7 @@ import ReaderPanel from "./components/ReaderPanel";
 import WriterPanel from "./components/WriterPanel";
 import AdminPanel from "./components/AdminPanel";
 import PostReaderModal from "./components/PostReaderModal";
+import FacebookPostBox from "./components/FacebookPostBox";
 import { 
   BookOpen, 
   Coins, 
@@ -1010,6 +1011,12 @@ export default function App() {
                 
                 {/* Center Column: All writings feed */}
                 <section className="lg:col-span-8 flex flex-col gap-6">
+                  {currentUser?.role === "writer" && (
+                    <FacebookPostBox
+                      currentUser={currentUser}
+                      onPublishPost={handlePublishPost}
+                    />
+                  )}
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                       <div>

@@ -6,6 +6,7 @@
 import React, { useState } from "react";
 import { Post, UserProfile } from "../types";
 import { Sparkles, FileSpreadsheet, PlusCircle, Edit, Eye, ShoppingBag, Coins, DollarSign, PenTool } from "lucide-react";
+import FacebookPostBox from "./FacebookPostBox";
 
 interface WriterPanelProps {
   profile: UserProfile;
@@ -106,6 +107,9 @@ export default function WriterPanel({
           </div>
         </div>
       </div>
+
+      {/* Facebook style post creator */}
+      <FacebookPostBox currentUser={profile} onPublishPost={onPublishPost} />
 
       {/* Writer Info & Action Bar */}
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
