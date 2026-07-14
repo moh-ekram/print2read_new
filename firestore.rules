@@ -27,9 +27,9 @@ service cloud.firestore {
     
     function isAdmin() {
       return isAuthenticated() && (
-        request.auth.token.email == 'admin@readtoprint.com' ||
-        request.auth.token.email == 'mohammad.001ekram@gmail.com' ||
-        request.auth.token.email == 'dusahityaparishad@gmail.com' ||
+        ('email' in request.auth.token && request.auth.token.email == 'admin@readtoprint.com') ||
+        ('email' in request.auth.token && request.auth.token.email == 'mohammad.001ekram@gmail.com') ||
+        ('email' in request.auth.token && request.auth.token.email == 'dusahityaparishad@gmail.com') ||
         getUserRole(request.auth.uid) == 'admin'
       );
     }
@@ -46,9 +46,9 @@ service cloud.firestore {
           !('role' in resource.data) || 
           request.resource.data.role == resource.data.role ||
           // Admin emails can elevate themselves to admin role
-          request.auth.token.email == 'admin@readtoprint.com' ||
-          request.auth.token.email == 'mohammad.001ekram@gmail.com' ||
-          request.auth.token.email == 'dusahityaparishad@gmail.com'
+          ('email' in request.auth.token && request.auth.token.email == 'admin@readtoprint.com') ||
+          ('email' in request.auth.token && request.auth.token.email == 'mohammad.001ekram@gmail.com') ||
+          ('email' in request.auth.token && request.auth.token.email == 'dusahityaparishad@gmail.com')
         )) ||
         // Transactional updates to another user (e.g., paying an author during basket actions)
         (!isOwner(userId) && (
@@ -109,6 +109,22 @@ service cloud.firestore {
     match /writerApplications/{appId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 8. Orders Collection
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 9. Settlements Collection
+    match /settlements/{settlementId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }

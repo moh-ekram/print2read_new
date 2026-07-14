@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { UserProfile, Post, CoinTransaction, UserRole } from "./types";
+import { UserProfile, Post, CoinTransaction, UserRole, Order } from "./types";
 import AuthModal from "./components/AuthModal";
 import { firebaseAuth, isFirebaseConfigured } from "./lib/firebase";
 import { 
@@ -19,7 +19,9 @@ import {
   handleWithdrawActionInFirestore, 
   fetchAdminDataFromFirestore,
   submitWriterApplicationInFirestore,
-  approveWriterApplicationInFirestore
+  approveWriterApplicationInFirestore,
+  createOrderInFirestore,
+  updateOrderStatusInFirestore
 } from "./lib/firestoreService";
 import CoinsModal from "./components/CoinsModal";
 import ReaderPanel from "./components/ReaderPanel";
@@ -91,6 +93,39 @@ export default function App() {
   const [selectedBundle, setSelectedBundle] = useState<any | null>(null);
   const [gatewayPhone, setGatewayPhone] = useState("");
   const [gatewayPin, setGatewayPin] = useState("");
+
+  // Read-to-Print Checkout & Orders states
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [checkoutStep, setCheckoutStep] = useState<"idle" | "form" | "payment" | "processing" | "success">("idle");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerCity, setCustomerCity] = useState("Dhaka");
+  const [bookTitle, setBookTitle] = useState("");
+  const [checkoutOtp, setCheckoutOtp] = useState("");
+  const [checkoutPin, setCheckoutPin] = useState("");
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
+
+  // Load and sync orders initially
+  useEffect(() => {
+    const savedOrders = localStorage.getItem("r2p_orders");
+    if (savedOrders) {
+      try {
+        setOrders(JSON.parse(savedOrders));
+      } catch (e) {
+        console.error("Failed to parse saved orders", e);
+      }
+    }
+  }, []);
+
+  // Update default customer name and book title based on current user
+  useEffect(() => {
+    if (currentUser) {
+      setCustomerName(currentUser.displayName || "");
+      setBookTitle((currentUser.displayName || "আমার") + "-এর সংকলন");
+    }
+  }, [currentUser]);
 
   // Author Application fields
   const [appCategory, setAppCategory] = useState("প্রবন্ধ ও গল্প");
@@ -213,12 +248,20 @@ export default function App() {
     try {
       if (isFirebaseConfigured) {
         const data = await fetchAdminDataFromFirestore();
-        setAdminData(data);
+        setAdminData(data as any);
+        if (data && (data as any).orders) {
+          setOrders((data as any).orders);
+          localStorage.setItem("r2p_orders", JSON.stringify((data as any).orders));
+        }
       } else {
         const response = await fetch("/api/admin/data");
         if (response.ok) {
           const data = await response.json();
           setAdminData(data);
+          if (data && data.orders) {
+            setOrders(data.orders);
+            localStorage.setItem("r2p_orders", JSON.stringify(data.orders));
+          }
         }
       }
     } catch (e) {
@@ -491,6 +534,108 @@ export default function App() {
     }
   };
 
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      if (isFirebaseConfigured) {
+        await updateOrderStatusInFirestore(orderId, newStatus);
+        fetchAdminData();
+      } else {
+        const response = await fetch(`/api/admin/orders/${orderId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ printingStatus: newStatus })
+        });
+        if (response.ok) {
+          fetchAdminData();
+        } else {
+          alert("স্ট্যাটাস পরিবর্তন করা সম্ভব হয়নি।");
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      alert("অর্ডার স্ট্যাটাস আপডেট করার সময় ত্রুটি ঘটেছে।");
+    }
+  };
+
+  const handlePlaceOrder = async () => {
+    if (!currentUser) return;
+    try {
+      const basketPosts = posts.filter(p => currentUser?.printBasketPostIds.includes(p.id));
+      if (basketPosts.length === 0) return;
+
+      let currentStartPage = 3;
+      const bookArticles = basketPosts.map((post) => {
+        const wordCount = post.content ? post.content.split(/\s+/).filter(Boolean).length : 200;
+        const pagesNeeded = Math.ceil(wordCount / 200);
+        const startPage = currentStartPage;
+        const endPage = currentStartPage + pagesNeeded - 1;
+        currentStartPage = endPage + 1;
+        return {
+          id: post.id,
+          title: post.title,
+          pagesNeeded,
+          startPage,
+          endPage
+        };
+      });
+
+      const subtotalPages = bookArticles.reduce((sum, p) => sum + p.pagesNeeded, 0);
+      const totalPages = subtotalPages + 2;
+      const pageCost = totalPages * 1.5;
+      const bindingCost = 20;
+      const deliveryCost = customerCity === "Dhaka" ? 60 : 120;
+      const totalPrice = pageCost + bindingCost + deliveryCost;
+
+      const orderId = "R2P-" + Math.floor(Math.random() * 900000 + 100000);
+      const newOrder: Order = {
+        id: orderId,
+        userId: currentUser.uid,
+        customerName,
+        customerPhone,
+        customerAddress,
+        customerCity,
+        bookName: bookTitle || "আমার সংকলন",
+        articleTitles: basketPosts.map(p => p.title),
+        totalPages,
+        totalPrice,
+        paymentStatus: "Paid",
+        printingStatus: "Received",
+        timestamp: new Date().toISOString()
+      };
+
+      if (isFirebaseConfigured) {
+        await createOrderInFirestore(newOrder);
+        await handleUserActionInFirestore(currentUser.uid, "checkout_basket", {});
+      } else {
+        await fetch("/api/admin/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newOrder)
+        });
+        await fetch(`/api/users/${currentUser.uid}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actionType: "checkout_basket" })
+        });
+      }
+
+      const updatedUser = { ...currentUser, printBasketPostIds: [] };
+      setCurrentUser(updatedUser);
+
+      const updatedOrders = [newOrder, ...orders];
+      setOrders(updatedOrders);
+      localStorage.setItem("r2p_orders", JSON.stringify(updatedOrders));
+
+      setPlacedOrder(newOrder);
+      setCheckoutStep("success");
+      
+      fetchAdminData();
+    } catch (e) {
+      console.error("Order processing error", e);
+      alert("অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। দয়া করে পুনরায় চেষ্টা করুন।");
+    }
+  };
+
   const handleWriterApplicationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
@@ -710,6 +855,31 @@ export default function App() {
       desc: currentUser?.role === "writer" ? "লেখা প্রকাশ ও আয় পরিসংখ্যান" : "লেখক হতে আবেদন করুন"
     }
   ];
+
+  const basketPosts = posts.filter(p => currentUser?.printBasketPostIds.includes(p.id));
+  let currentStartPage = 3;
+  const bookArticles = basketPosts.map((post) => {
+    const wordCount = post.content ? post.content.split(/\s+/).filter(Boolean).length : 200;
+    const pagesNeeded = Math.ceil(wordCount / 200);
+    const startPage = currentStartPage;
+    const endPage = currentStartPage + pagesNeeded - 1;
+    currentStartPage = endPage + 1;
+    return {
+      id: post.id,
+      title: post.title,
+      authorName: post.authorName,
+      wordCount,
+      pagesNeeded,
+      startPage,
+      endPage
+    };
+  });
+  const subtotalPages = bookArticles.reduce((sum, p) => sum + p.pagesNeeded, 0);
+  const totalPages = basketPosts.length > 0 ? (subtotalPages + 2) : 0;
+  const pageCost = totalPages * 1.5;
+  const bindingCost = basketPosts.length > 0 ? 20 : 0;
+  const deliveryCost = customerCity === "Dhaka" ? 60 : 120;
+  const totalPrice = pageCost + bindingCost + deliveryCost;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-orange-100 selection:text-orange-800 text-slate-800">
@@ -1593,80 +1763,8 @@ export default function App() {
                       {currentUser?.printBasketPostIds.length || 0} টি লেখা
                     </span>
                   </div>
-
-                  {printingState !== "idle" ? (
-                    /* Printer Live Simulation Stream */
-                    <div className="p-8 text-center bg-slate-900 text-slate-100 font-mono min-h-[400px] flex flex-col justify-between rounded-b-3xl">
-                      <div className="border border-slate-700 p-4 rounded-xl bg-slate-950 max-w-xl mx-auto w-full text-left">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                          <span className="text-xs font-bold text-slate-300 tracking-wider uppercase font-mono">LOCAL SYSTEM PRINTER CONNECTED</span>
-                        </div>
-                        <div className="space-y-1.5 text-xs text-emerald-400 max-h-[180px] overflow-y-auto font-mono">
-                          <p className="text-slate-500">[{new Date().toLocaleTimeString()}] Establishing print protocol...</p>
-                          {printProgress >= 15 && <p>✔ [PROTOCOL] Core page-dimensions validated.</p>}
-                          {printProgress >= 35 && <p className="text-yellow-400">▶ Loading high-gloss A4 premium ivory papers...</p>}
-                          {printProgress >= 50 && <p>✔ [FEEDER] Loaded 80gsm sheets securely.</p>}
-                          {printProgress >= 65 && <p className="text-indigo-400 font-bold">▶ Core thermal ink-jet nozzle calibrating...</p>}
-                          {printProgress >= 80 && <p className="text-emerald-300 animate-pulse">▶ Printing: Page 1/3... Formatting margins... Done.</p>}
-                          {printProgress >= 95 && <p className="text-emerald-300 animate-pulse">▶ Printing: Page 2/3... Binding booklet adhesive... Done.</p>}
-                          {printProgress === 100 && <p className="text-slate-200">✔ [SYSTEM] Booklet generated. Output tray unlocked.</p>}
-                        </div>
-                      </div>
-
-                      {/* Progress meter */}
-                      <div className="max-w-md mx-auto w-full space-y-4 my-6">
-                        <div className="flex justify-between items-center text-xs font-bold font-mono">
-                          <span className="text-orange-400 uppercase tracking-widest">
-                            {printingState === "processing" ? "কাগজ প্রক্রিয়াকরণ..." : printingState === "paper" ? "মুদ্রণযোগ্য উপাদান লোড হচ্ছে..." : printingState === "printing" ? "মুদ্রণ ও বাইন্ডিং চলছে..." : "সম্পূর্ণ হয়েছে!"}
-                          </span>
-                          <span>{printProgress}%</span>
-                        </div>
-                        <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-                          <div className="h-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-300 rounded-full" style={{ width: `${printProgress}%` }} />
-                        </div>
-                      </div>
-
-                      {/* Printed receipt summary */}
-                      {printingState === "success" && printedReceipt && (
-                        <div className="bg-white text-slate-800 p-6 rounded-2xl border border-slate-200 max-w-md mx-auto w-full text-left shadow-lg">
-                          <div className="text-center pb-4 border-b border-dashed border-slate-300">
-                            <h3 className="font-serif font-bold text-base tracking-tight text-slate-800">READ-TO-PRINT INVOICE</h3>
-                            <p className="text-[10px] text-slate-400 font-mono mt-1">Receipt ID: {printedReceipt.receiptId}</p>
-                            <p className="text-[9px] text-slate-400 font-mono mt-0.5">{printedReceipt.timestamp}</p>
-                          </div>
-                          <div className="py-4 space-y-2 text-xs">
-                            <p className="font-bold text-slate-500">মুদ্রিত উপাদানসমূহ:</p>
-                            {printedReceipt.items.map((it: any, index: number) => (
-                              <div key={index} className="flex justify-between gap-2">
-                                <span className="truncate max-w-[200px]">{it.title}</span>
-                                <span className="font-mono text-slate-500 shrink-0">{it.priceCoins} CC</span>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="pt-3 border-t border-dashed border-slate-300 flex justify-between items-center text-xs font-bold font-mono">
-                            <span>মোট খরচের কয়েন:</span>
-                            <span className="text-orange-600">{printedReceipt.totalCoins} CC</span>
-                          </div>
-                          <p className="text-[9px] text-slate-400 mt-4 leading-relaxed text-center">
-                            * বইয়ের প্রিন্ট কপি সফলভাবে জেনারেট হয়েছে। এই বিলিং রিসিপ্টটি আপনার অফলাইন ডায়েরিতে সংরক্ষিত রয়েছে।
-                          </p>
-                          <button
-                            onClick={() => {
-                              setPrintingState("idle");
-                              setPrintedReceipt(null);
-                            }}
-                            className="w-full mt-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold cursor-pointer transition-all"
-                          >
-                            ড্যাশবোর্ডে ফিরে যান
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    /* Default Basket list view */
                     <div className="p-6">
-                      {posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).length === 0 ? (
+                      {basketPosts.length === 0 ? (
                         <div className="text-center py-16 text-slate-400">
                           <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <ShoppingBag className="w-8 h-8 text-slate-300" />
@@ -1674,128 +1772,517 @@ export default function App() {
                           <h3 className="font-serif font-bold text-slate-700 text-base">আপনার বাস্কেটটি সম্পূর্ণ খালি</h3>
                           <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">হোমপেজে গিয়ে আপনার পছন্দের লেখাগুলো বাস্কেটে যোগ করুন ফিজিক্যাল প্রিন্ট নেওয়ার উদ্দেশ্যে।</p>
                           <button
-                            onClick={() => setActiveNavView("home")}
+                            onClick={() => {
+                              setActiveNavView("home");
+                              setCheckoutStep("idle");
+                            }}
                             className="mt-6 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
                           >
                             হোম পেজে লেখা খুঁজুন
                           </button>
                         </div>
-                      ) : (
+                      ) : checkoutStep === "idle" ? (
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                           {/* Basket items stack */}
-                          <div className="lg:col-span-7 space-y-3">
-                            {posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).map(post => (
-                              <div key={post.id} className="bg-white p-4 rounded-2xl border border-slate-200 flex justify-between items-center gap-4 hover:border-orange-200 transition-colors">
-                                <div className="min-w-0">
-                                  <h4 onClick={() => handleOpenPostReader(post)} className="font-bold text-slate-800 truncate font-serif text-sm cursor-pointer hover:text-orange-600">{post.title}</h4>
-                                  <p className="text-[10px] text-slate-400 mt-1">লেখক: {post.authorName}</p>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                  <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">{post.priceCoins} CC</span>
-                                  <button
-                                    onClick={() => handleAction("basket", post.id)}
-                                    className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"
-                                    title="রিমুভ করুন"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Summary checkout panel */}
-                          <div className="lg:col-span-5 bg-slate-50 border border-slate-150 p-6 rounded-2xl">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">অর্ডার সারাংশ (Order Summary)</h3>
-                            <div className="space-y-3 text-xs mb-6 font-mono">
-                              <div className="flex justify-between text-slate-500">
-                                <span>মোট নির্বাচিত লেখা:</span>
-                                <span>{posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).length} টি</span>
-                              </div>
-                              <div className="flex justify-between text-slate-500">
-                                <span>শিপিং চার্জ:</span>
-                                <span className="text-emerald-600 font-bold">ফ্রি (Promo Active)</span>
-                              </div>
-                              <div className="h-px bg-slate-200 my-2" />
-                              <div className="flex justify-between text-slate-700 font-bold text-sm">
-                                <span>প্রয়োজনীয় কয়েন:</span>
-                                <span className="text-orange-600 font-bold font-mono">
-                                  {posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).reduce((a, b) => a + b.priceCoins, 0)} CC
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-slate-400 text-[10px]">
-                                <span>সমানুপাতিক টাকা:</span>
-                                <span className="font-mono">৳ {posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).reduce((a, b) => a + b.priceMoney, 0)}</span>
+                          <div className="lg:col-span-7 space-y-5">
+                            <div className="bg-white p-5 rounded-3xl border border-slate-200">
+                              <h3 className="text-sm font-bold text-slate-700 font-serif mb-4">নির্বাচিত লেখাসমূহ ({basketPosts.length} টি)</h3>
+                              <div className="space-y-3">
+                                {bookArticles.map((art) => (
+                                  <div key={art.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex justify-between items-center gap-4 hover:border-orange-100 transition-colors">
+                                    <div className="min-w-0">
+                                      <h4 className="font-bold text-slate-800 truncate font-serif text-sm">{art.title}</h4>
+                                      <div className="flex items-center gap-2 mt-1.5 text-[10px] text-slate-400 font-mono">
+                                        <span>লেখক: {art.authorName}</span>
+                                        <span>•</span>
+                                        <span>{art.wordCount} শব্দ</span>
+                                        <span>•</span>
+                                        <span className="text-orange-600 font-bold bg-orange-50 px-1.5 py-0.5 rounded-sm">{art.pagesNeeded} পৃষ্ঠা (পৃষ্ঠা {art.startPage}-{art.endPage})</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                      <button
+                                        onClick={() => handleAction("basket", art.id)}
+                                        className="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-colors cursor-pointer"
+                                        title="মুছে ফেলুন"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
 
-                            <button
-                              onClick={async () => {
-                                const totalCoins = posts.filter(p => currentUser?.printBasketPostIds.includes(p.id)).reduce((a, b) => a + b.priceCoins, 0);
-                                if (currentUser!.coins < totalCoins) {
-                                  alert("দুঃখিত! আপনার ওয়ালেটে পর্যাপ্ত কয়েন নেই। অনুগ্রহ করে কয়েন রিচার্জ করুন।");
-                                  setActiveNavView("balance");
-                                  return;
-                                }
+                            {/* Book Cover Live Customizer */}
+                            <div className="bg-white p-5 rounded-3xl border border-slate-200 space-y-4">
+                              <div className="flex justify-between items-center">
+                                <h3 className="text-sm font-bold text-slate-700 font-serif">বইয়ের কভার ও মেটা কাস্টমাইজেশন</h3>
+                                <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-full font-bold">লাইভ প্রিভিউ</span>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                                <div className="space-y-3">
+                                  <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 mb-1">বইয়ের শিরোনাম (Custom Title):</label>
+                                    <input 
+                                      type="text"
+                                      value={bookTitle}
+                                      onChange={(e) => setBookTitle(e.target.value)}
+                                      placeholder="বইয়ের কাস্টম নাম দিন..."
+                                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-orange-500 outline-none"
+                                    />
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    <p className="font-bold text-slate-600 mb-1">📖 সূচিপত্র ও পৃষ্ঠা নীতি (200 words = 1 Page):</p>
+                                    <p>• পৃষ্ঠা ১: বইয়ের সুন্দর ডিজিটাল কভার পেজ।</p>
+                                    <p>• পৃষ্ঠা ২: ডাইনামিক সূচিপত্র (TOC) এবং পৃষ্ঠা পরিসীমা।</p>
+                                    <p>• পৃষ্ঠা ৩+: আপনার নির্বাচিত গল্প বা প্রবন্ধসমূহ।</p>
+                                  </div>
+                                </div>
 
-                                // Trigger Printer simulation progress
-                                setPrintingState("processing");
-                                setPrintProgress(0);
-                                
-                                let progressVal = 0;
-                                const interval = setInterval(() => {
-                                  progressVal += 10;
-                                  if (progressVal <= 25) {
-                                    setPrintingState("processing");
-                                  } else if (progressVal <= 50) {
-                                    setPrintingState("paper");
-                                  } else if (progressVal <= 90) {
-                                    setPrintingState("printing");
-                                  }
-                                  
-                                  setPrintProgress(Math.min(100, progressVal));
-                                  
-                                  if (progressVal >= 100) {
-                                    clearInterval(interval);
-                                    setPrintingState("success");
-                                    
-                                    // Generate print invoice details
-                                    const itemsPrinted = posts.filter(p => currentUser?.printBasketPostIds.includes(p.id));
-                                    setPrintedReceipt({
-                                      receiptId: "RTPI-" + Math.floor(Math.random() * 900000 + 100000),
-                                      timestamp: new Date().toLocaleString("bn-BD"),
-                                      items: itemsPrinted,
-                                      totalCoins: totalCoins
-                                    });
+                                {/* Beautiful Book Cover Mockup */}
+                                <div className="bg-slate-50 p-4 rounded-2xl flex items-center justify-center">
+                                  <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-xl shadow-md border border-slate-700 w-44 h-56 text-center flex flex-col justify-between relative overflow-hidden font-serif">
+                                    <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
+                                    <div className="space-y-1">
+                                      <p className="text-[7px] tracking-widest text-amber-400 font-mono uppercase">Read-To-Print Anthology</p>
+                                      <h4 className="text-[11px] font-extrabold text-slate-100 leading-tight truncate mt-1">{bookTitle || "আমার সংকলন"}</h4>
+                                      <div className="w-8 h-px bg-amber-400 mx-auto my-1.5" />
+                                    </div>
+                                    <div className="space-y-0.5 text-[8px] text-slate-300">
+                                      <p className="font-bold text-slate-200 text-[7px]">সংকলনে রয়েছেন:</p>
+                                      <p className="truncate max-w-[150px] mx-auto text-[7px] text-slate-400">
+                                        {basketPosts.map(p => p.authorName).filter((v, i, s) => s.indexOf(v) === i).join(", ")}
+                                      </p>
+                                    </div>
+                                    <p className="text-[6px] text-amber-500 font-mono tracking-wider">ঢাকা সাহিত্য পরিষদ প্রেস</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
 
-                                    // Deduct coins & Sync backend
-                                    fetch(`/api/users/${currentUser!.uid}/action`, {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ actionType: "checkout_basket" })
-                                    }).then(res => res.json()).then(data => {
-                                      if (data.success) {
-                                        // Update local session
-                                        const updatedUser = { ...currentUser!, coins: currentUser!.coins - totalCoins, printBasketPostIds: [] };
-                                        setCurrentUser(updatedUser);
-                                        fetchAdminData();
-                                      }
-                                    });
-                                  }
-                                }, 500);
-                              }}
-                              className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-extrabold shadow-xs hover:shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                            >
-                              <Printer className="w-4 h-4" />
-                              মুদ্রণ নিশ্চিত করুন ও সরাসরি প্রিন্ট করুন
-                            </button>
+                          {/* Summary checkout panel */}
+                          <div className="lg:col-span-5 bg-white border border-slate-200 p-6 rounded-3xl shadow-xs space-y-5">
+                            <div>
+                              <h3 className="text-sm font-bold text-slate-800 font-serif mb-3">মুদ্রণ ও ডেলিভারি হিসাব</h3>
+                              <div className="space-y-2.5 text-xs font-mono text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-150">
+                                <div className="flex justify-between">
+                                  <span>নির্বাচিত কন্টেন্ট:</span>
+                                  <span className="font-bold text-slate-800">{basketPosts.length} টি</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>কন্টেন্ট পৃষ্ঠা সংখ্যা:</span>
+                                  <span className="font-bold text-slate-800">{subtotalPages} পৃষ্ঠা</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>কভার + সূচিপত্র:</span>
+                                  <span className="font-bold text-slate-800">+২ পৃষ্ঠা</span>
+                                </div>
+                                <div className="h-px bg-slate-200 my-1" />
+                                <div className="flex justify-between font-bold text-slate-700 text-xs">
+                                  <span>মোট পৃষ্ঠা সংখ্যা:</span>
+                                  <span className="text-indigo-600">{totalPages} পৃষ্ঠা</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>পৃষ্ঠা মূল্য (৳১.৫০/পৃষ্ঠা):</span>
+                                  <span className="font-bold text-slate-800">৳ {pageCost.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>বাইন্ডিং চার্জ:</span>
+                                  <span className="font-bold text-slate-800">৳ {bindingCost}.00</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>ডেলিভারি চার্জ:</span>
+                                  <span className="font-bold text-slate-800">৳ {deliveryCost}.00</span>
+                                </div>
+                                <div className="h-px bg-slate-200 my-1" />
+                                <div className="flex justify-between font-extrabold text-sm text-slate-800 pt-1">
+                                  <span>সর্বমোট প্রদেয় বিল:</span>
+                                  <span className="text-orange-600 text-sm">৳ {totalPrice.toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-500 mb-1">ডেলিভারি এরিয়া নির্বাচন করুন:</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <button
+                                    onClick={() => setCustomerCity("Dhaka")}
+                                    className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                                      customerCity === "Dhaka" 
+                                        ? "bg-orange-50 border-orange-500 text-orange-700" 
+                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                                  >
+                                    ঢাকার ভেতরে (৳৬০)
+                                  </button>
+                                  <button
+                                    onClick={() => setCustomerCity("Outside")}
+                                    className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                                      customerCity === "Outside" 
+                                        ? "bg-orange-50 border-orange-500 text-orange-700" 
+                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                                  >
+                                    ঢাকার বাইরে (৳১২০)
+                                  </button>
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={() => setCheckoutStep("form")}
+                                className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-extrabold shadow-sm hover:shadow transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                              >
+                                <Printer className="w-4 h-4" />
+                                ফিজিক্যাল কপি অর্ডার ও বুকিং করুন
+                              </button>
+                            </div>
                           </div>
                         </div>
+                      ) : checkoutStep === "form" ? (
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                          {/* Left Column: Book summary & calculations */}
+                          <div className="lg:col-span-5 space-y-4">
+                            <div className="bg-slate-50 p-5 rounded-3xl border border-slate-150">
+                              <h4 className="font-serif font-bold text-slate-800 text-sm mb-3">সংকলন অর্ডার বিবরণী</h4>
+                              <div className="space-y-2 text-xs font-mono text-slate-600">
+                                <p><span className="text-slate-400">বইয়ের নাম:</span> <span className="font-bold text-slate-700">{bookTitle || "আমার সংকলন"}</span></p>
+                                <p><span className="text-slate-400">মোট প্রবন্ধ:</span> <span className="font-bold text-slate-700">{basketPosts.length} টি</span></p>
+                                <p><span className="text-slate-400">মোট পৃষ্ঠা:</span> <span className="font-bold text-slate-700">{totalPages} পৃষ্ঠা (A4 সাইজ)</span></p>
+                                <p><span className="text-slate-400">シップিং এরিয়া:</span> <span className="font-bold text-slate-700">{customerCity === "Dhaka" ? "ঢাকার ভেতরে" : "ঢাকার বাইরে"}</span></p>
+                                <div className="h-px bg-slate-200 my-2" />
+                                <div className="flex justify-between text-slate-800 font-extrabold text-xs">
+                                  <span>সর্বমোট পরিশোধযোগ্য:</span>
+                                  <span className="text-orange-600">৳ {totalPrice.toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setCheckoutStep("idle")}
+                              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
+                            >
+                              ← পূর্ববর্তী ধাপে ফিরে যান
+                            </button>
+                          </div>
+
+                          {/* Right Column: Address Form */}
+                          <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
+                            <h3 className="text-sm font-bold text-slate-800 font-serif border-b pb-3">শিপিং ও ডেলিভারি তথ্য প্রদান করুন</h3>
+                            
+                            <div className="space-y-3.5">
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-500 mb-1">গ্রাহকের পুরো নাম (Customer Name):</label>
+                                <input 
+                                  type="text"
+                                  value={customerName}
+                                  onChange={(e) => setCustomerName(e.target.value)}
+                                  placeholder="আপনার নাম লিখুন..."
+                                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-orange-500 outline-none"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-500 mb-1">মোবাইল নাম্বার (Mobile Number):</label>
+                                <input 
+                                  type="tel"
+                                  value={customerPhone}
+                                  onChange={(e) => setCustomerPhone(e.target.value)}
+                                  placeholder="যেমন: 017XXXXXXXX"
+                                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-orange-500 outline-none font-mono"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-500 mb-1">পূর্ণাঙ্গ ডেলিভারি ঠিকানা (Detailed Delivery Address):</label>
+                                <textarea 
+                                  value={customerAddress}
+                                  onChange={(e) => setCustomerAddress(e.target.value)}
+                                  placeholder="বাসা নং, রোড নং, এলাকা এবং জেলা উল্লেখ করুন..."
+                                  rows={3}
+                                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-orange-500 outline-none resize-none"
+                                />
+                              </div>
+
+                              <button
+                                onClick={() => {
+                                  if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
+                                    alert("অনুগ্রহ করে শিপিং ফর্মের সকল তথ্য সঠিক উপায়ে পূরণ করুন।");
+                                    return;
+                                  }
+                                  const bdPhoneRegex = /^(?:\+88|88)?(01[3-9]\d{8})$/;
+                                  if (!bdPhoneRegex.test(customerPhone.trim())) {
+                                    alert("দয়া করে সঠিক ১১ ডিজিটের বাংলাদেশী মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX)।");
+                                    return;
+                                  }
+                                  setCheckoutStep("payment");
+                                }}
+                                className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-extrabold shadow-sm hover:shadow transition-all cursor-pointer text-center"
+                              >
+                                পেমেন্ট সম্পন্ন করতে এগিয়ে যান →
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : checkoutStep === "payment" ? (
+                        <div className="max-w-md mx-auto bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden shadow-md">
+                          {/* Operator Selection Header */}
+                          <div className="bg-slate-900 text-white p-5 text-center relative">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mobile Banking Checkout Gateway</h4>
+                            <p className="text-lg font-mono font-black text-orange-400 mt-1">৳ {totalPrice.toFixed(2)} BDT</p>
+                          </div>
+
+                          <div className="p-6 space-y-4">
+                            <label className="block text-[11px] font-bold text-slate-500 text-center">অনুগ্রহ করে আপনার পেমেন্ট গেটওয়ে বেছে নিন:</label>
+                            
+                            <div className="grid grid-cols-3 gap-2">
+                              {["bKash", "Nagad", "Rocket"].map((op) => (
+                                <button
+                                  key={op}
+                                  onClick={() => {
+                                    setIsOtpSent(false);
+                                    setCheckoutOtp("");
+                                    setCheckoutPin("");
+                                  }}
+                                  className={`py-2 px-1 text-xs font-black rounded-xl border text-center transition-all cursor-pointer ${
+                                    op === "bKash" ? "hover:bg-pink-50 hover:border-pink-500 text-pink-700 bg-white border-slate-200" :
+                                    op === "Nagad" ? "hover:bg-orange-50 hover:border-orange-500 text-orange-700 bg-white border-slate-200" :
+                                    "hover:bg-purple-50 hover:border-purple-500 text-purple-700 bg-white border-slate-200"
+                                  }`}
+                                >
+                                  {op === "bKash" ? "bkash" : op === "Nagad" ? "nagad" : "rocket"}
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="h-px bg-slate-200 my-2" />
+
+                            <div className="space-y-3 text-xs font-mono">
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 mb-1">মার্চেন্ট ওয়ালেট নাম্বার:</label>
+                                <input 
+                                  type="text"
+                                  disabled
+                                  value="01847110992 (Read-To-Print Merchant)"
+                                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 font-bold"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 mb-1">আপনার পেমেন্ট মোবাইল নাম্বার:</label>
+                                <input 
+                                  type="tel"
+                                  value={customerPhone}
+                                  onChange={(e) => setCustomerPhone(e.target.value)}
+                                  placeholder="01XXXXXXXXX"
+                                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold"
+                                />
+                              </div>
+
+                              {!isOtpSent ? (
+                                <button
+                                  onClick={() => {
+                                    if (!customerPhone || customerPhone.length < 10) {
+                                      alert("অনুগ্রহ করে আপনার সঠিক ওয়ালেট মোবাইল নাম্বার দিন।");
+                                      return;
+                                    }
+                                    setIsOtpSent(true);
+                                    alert("সফলতা! একটি ডেমো ওটিপি কোড (১২৩৪) আপনার মোবাইলে পাঠানো হয়েছে।");
+                                  }}
+                                  className="w-full py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  OTP কোড পাঠান
+                                </button>
+                              ) : (
+                                <>
+                                  <div className="bg-amber-50 text-amber-800 text-[10px] p-2.5 rounded-xl border border-amber-200 leading-normal">
+                                    <p className="font-bold">✓ ওটিপি কোড পাঠানো হয়েছে!</p>
+                                    <p>ডেমো পারপাসে ওটিপি হিসেবে <b>১২৩৪</b> কোডটি ব্যবহার করুন।</p>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">৪-ডিজিট ওটিপি কোড (OTP Verification):</label>
+                                    <input 
+                                      type="text"
+                                      maxLength={4}
+                                      value={checkoutOtp}
+                                      onChange={(e) => setCheckoutOtp(e.target.value)}
+                                      placeholder="যেমন: ১২৩৪"
+                                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs tracking-widest text-center font-bold"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">৪-ডিজিট ওয়ালেট সিক্রেট পিন (Wallet PIN):</label>
+                                    <input 
+                                      type="password"
+                                      maxLength={4}
+                                      value={checkoutPin}
+                                      onChange={(e) => setCheckoutPin(e.target.value)}
+                                      placeholder="••••"
+                                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs tracking-widest text-center font-bold"
+                                    />
+                                  </div>
+
+                                  <button
+                                    onClick={async () => {
+                                      if (checkoutOtp !== "1234") {
+                                        alert("ভুল ওটিপি! ডেমো ওটিপি হিসেবে '১২৩৪' প্রবেশ করান।");
+                                        return;
+                                      }
+                                      if (!checkoutPin || checkoutPin.length < 4) {
+                                        alert("অনুগ্রহ করে ৪ ডিজিটের পিন নাম্বারটি পূরণ করুন।");
+                                        return;
+                                      }
+
+                                      setCheckoutStep("processing");
+                                      setPrintProgress(0);
+
+                                      let prog = 0;
+                                      const interval = setInterval(async () => {
+                                        prog += 20;
+                                        setPrintProgress(Math.min(100, prog));
+                                        if (prog >= 100) {
+                                          clearInterval(interval);
+                                          await handlePlaceOrder();
+                                        }
+                                      }, 300);
+                                    }}
+                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    পেমেন্ট সম্পন্ন ও অর্ডার নিশ্চিত করুন
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ) : checkoutStep === "processing" ? (
+                        <div className="max-w-md mx-auto p-8 text-center bg-slate-900 text-slate-100 font-mono rounded-3xl shadow-lg space-y-6">
+                          <div className="border border-slate-700 p-4 rounded-2xl bg-slate-950 text-left">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+                              <span className="text-[10px] font-bold text-slate-300 tracking-widest uppercase">READ-TO-PRINT PRINTER PROCESSSING</span>
+                            </div>
+                            <div className="space-y-1.5 text-xs text-emerald-400 font-mono">
+                              <p className="text-slate-500">[{new Date().toLocaleTimeString()}] Booking print parameters...</p>
+                              {printProgress >= 20 && <p>✔ [INFO] Customer billing details validated.</p>}
+                              {printProgress >= 40 && <p className="text-yellow-400">▶ Syncing dynamic index & page ranges...</p>}
+                              {printProgress >= 60 && <p>✔ [COMPILER] Cover Page & TOC pages mapped successfully.</p>}
+                              {printProgress >= 80 && <p className="text-indigo-400 font-bold">▶ Generating thermal print layout queues...</p>}
+                              {printProgress === 100 && <p className="text-slate-200">✔ [SYSTEM] Print order generated in admin registry.</p>}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-xs font-bold font-mono">
+                              <span className="text-orange-400 uppercase tracking-widest">অর্ডার সাবমিট হচ্ছে...</span>
+                              <span>{printProgress}%</span>
+                            </div>
+                            <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                              <div className="h-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-300 rounded-full" style={{ width: `${printProgress}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        placedOrder && (
+                          <div className="max-w-xl mx-auto bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-lg p-6 space-y-6">
+                            <div className="text-center space-y-2">
+                              <div className="bg-emerald-50 text-emerald-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
+                                <CheckCircle2 className="w-6 h-6" />
+                              </div>
+                              <h3 className="font-serif font-black text-slate-800 text-lg leading-tight">আপনার সংকলন অর্ডারটি সফল হয়েছে!</h3>
+                              <p className="text-xs text-slate-400 max-w-sm mx-auto leading-normal">
+                                আমাদের প্রিন্টিং প্রেসে আপনার অর্ডারটি বুকড হয়েছে। দ্রুতই এটি সুন্দরভাবে ফিজিক্যাল বই আকারে বাঁধাই করে আপনার ঠিকানায় পাঠানো হবে।
+                              </p>
+                            </div>
+
+                            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 md:p-5 space-y-4">
+                              <div className="flex flex-col md:flex-row justify-between gap-4 border-b border-dashed pb-4 text-xs font-mono">
+                                <div>
+                                  <p className="text-slate-400 text-[10px]">ORDER RECEIPT ID</p>
+                                  <p className="font-black text-slate-800 text-sm mt-0.5">{placedOrder.id}</p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-400 text-[10px]">ORDER TIMESTAMP</p>
+                                  <p className="font-bold text-slate-700 mt-0.5">
+                                    {new Date(placedOrder.timestamp).toLocaleString("bn-BD", { dateStyle: "long", timeStyle: "short" })}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider font-sans">📖 বইয়ের সূচিপত্র ও পৃষ্ঠা সূচক (INDEX & CHAPTERS)</p>
+                                <div className="space-y-2 font-serif text-xs bg-white p-4 rounded-xl border border-slate-100 shadow-3xs">
+                                  <div className="flex justify-between text-slate-400 text-[11px]">
+                                    <span>কভার পেজ (Custom Cover Page)</span>
+                                    <span>পৃষ্ঠা ১</span>
+                                  </div>
+                                  <div className="flex justify-between text-slate-400 text-[11px]">
+                                    <span>সূচিপত্র পৃষ্ঠা (Table of Contents)</span>
+                                    <span>পৃষ্ঠা ২</span>
+                                  </div>
+                                  <div className="h-px bg-slate-100 my-1" />
+                                  {bookArticles.map((art, idx) => (
+                                    <div key={art.id} className="flex justify-between items-center text-slate-700">
+                                      <span className="font-bold truncate max-w-[280px]">{(idx + 1)}. {art.title}</span>
+                                      <span className="font-mono text-[11px] text-orange-600 bg-orange-50/60 px-1.5 py-0.5 rounded-sm">পৃষ্ঠা {art.startPage} - {art.endPage}</span>
+                                    </div>
+                                  ))}
+                                  <div className="h-px bg-slate-100 my-1" />
+                                  <div className="flex justify-between font-bold text-slate-800 text-[11px] font-sans">
+                                    <span>সর্বমোট বইয়ের পৃষ্ঠা:</span>
+                                    <span className="text-indigo-600 font-mono">{placedOrder.totalPages} পৃষ্ঠা</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono text-slate-600">
+                                <div>
+                                  <p className="text-slate-400 text-[10px]">DELIVERY ADDRESS</p>
+                                  <p className="font-bold text-slate-700 mt-1 leading-normal">{placedOrder.customerName}</p>
+                                  <p className="text-slate-500 mt-0.5">{placedOrder.customerPhone}</p>
+                                  <p className="text-slate-500 mt-0.5 leading-relaxed">{placedOrder.customerAddress}, {placedOrder.customerCity === "Dhaka" ? "ঢাকা" : "ঢাকার বাইরে"}</p>
+                                </div>
+                                <div className="md:text-right">
+                                  <p className="text-slate-400 text-[10px]">PAYMENT SUMMARY</p>
+                                  <p className="font-bold text-slate-700 mt-1">পেমেন্ট মেথড: Mobile Banking</p>
+                                  <p className="text-emerald-600 font-black mt-0.5">পেমেন্ট স্ট্যাটাস: Paid</p>
+                                  <p className="text-orange-600 font-black text-sm mt-1">মোট পরিশোধিত: ৳ {placedOrder.totalPrice.toFixed(2)}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                              <button
+                                onClick={() => {
+                                  setCheckoutStep("idle");
+                                  setActiveNavView("admin-panel");
+                                }}
+                                className="flex-1 py-3 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl cursor-pointer transition-all text-center flex items-center justify-center gap-1.5"
+                              >
+                                <BookOpen className="w-4 h-4" />
+                                অর্ডার ট্র্যাকিং হাব দেখুন
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setCheckoutStep("idle");
+                                  setActiveNavView("home");
+                                }}
+                                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer transition-all text-center"
+                              >
+                                আরও লেখা খুঁজুন
+                              </button>
+                            </div>
+                          </div>
+                        )
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
             ) : activeNavView === "balance" ? (
               /* --- WALLET & COIN STORE VIEW --- */
               <div className="max-w-4xl mx-auto">
@@ -2004,6 +2491,7 @@ export default function App() {
                   posts={posts}
                   onApproveWithdraw={handleApproveWithdraw}
                   onApproveApplication={handleApproveApplication}
+                  onUpdateOrderStatus={handleUpdateOrderStatus}
                   onRefreshAdminData={fetchAdminData}
                   onRefreshPosts={fetchPosts}
                 />

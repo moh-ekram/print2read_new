@@ -76,3 +76,20 @@ export interface FollowerDetail {
   email: string;
   bio?: string;
 }
+
+export interface Order {
+  id: string;
+  userId: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  customerCity: string;
+  bookName: string;
+  articleTitles: string[];
+  totalPages: number;
+  totalPrice: number;
+  paymentStatus: "Paid" | "Unpaid";
+  printingStatus: "Received" | "Printing" | "Shipped" | "Delivered";
+  timestamp: string;
+}
+

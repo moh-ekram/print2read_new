@@ -509,6 +509,12 @@ app.post("/api/users/:uid/action", (req, res) => {
     return res.json({ success: true, posts: db.posts });
   }
 
+  if (actionType === "checkout_basket") {
+    user.printBasketPostIds = [];
+    saveDatabase(db);
+    return res.json({ success: true, user });
+  }
+
   if (actionType === "follow") {
     if (!authorId) return res.status(400).json({ error: "authorId is required" });
     const hasFollow = user.followingAuthors.includes(authorId);
@@ -551,6 +557,24 @@ app.get("/api/admin/data", (req, res) => {
     })),
     globalHistory: db.globalHistory
   });
+});
+
+// Create a new custom print order
+app.post("/api/admin/orders", (req, res) => {
+  const orderData = req.body;
+  const db = getDatabase();
+  const orderId = orderData.id || "R2P-" + Math.floor(100000 + Math.random() * 900000);
+  const newOrder = {
+    ...orderData,
+    id: orderId,
+    timestamp: new Date().toISOString()
+  };
+  if (!db.orders) {
+    db.orders = [];
+  }
+  db.orders.unshift(newOrder);
+  saveDatabase(db);
+  res.status(201).json({ success: true, order: newOrder, orders: db.orders });
 });
 
 // Update printing status of an order

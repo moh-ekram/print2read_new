@@ -46,6 +46,7 @@ interface AdminPanelProps {
   posts: Post[];
   onApproveWithdraw: (requestId: string, status: "approved" | "rejected") => Promise<void>;
   onApproveApplication: (applicationId: string, status: "approved" | "rejected") => Promise<void>;
+  onUpdateOrderStatus: (orderId: string, status: string) => Promise<void>;
   onRefreshAdminData: () => void;
   onRefreshPosts: () => void;
 }
@@ -58,6 +59,7 @@ export default function AdminPanel({
   posts,
   onApproveWithdraw,
   onApproveApplication,
+  onUpdateOrderStatus,
   onRefreshAdminData,
   onRefreshPosts
 }: AdminPanelProps) {
@@ -150,20 +152,10 @@ export default function AdminPanel({
   // Update order print/delivery status
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ printingStatus: newStatus })
-      });
-      if (response.ok) {
-        onRefreshAdminData();
-      } else {
-        const err = await response.json();
-        alert(err.error || "স্ট্যাটাস পরিবর্তন করা সম্ভব হয়নি।");
-      }
+      await onUpdateOrderStatus(orderId, newStatus);
     } catch (e) {
       console.error(e);
-      alert("সার্ভার ত্রুটি ঘটেছে।");
+      alert("অর্ডার স্ট্যাটাস পরিবর্তন করতে ব্যর্থ হয়েছে।");
     }
   };
 

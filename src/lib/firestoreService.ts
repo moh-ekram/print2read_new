@@ -545,6 +545,12 @@ export async function handleUserActionInFirestore(
         return { success: true };
       }
 
+      if (actionType === "checkout_basket") {
+        transaction.update(userRef, { printBasketPostIds: [] });
+        user.printBasketPostIds = [];
+        return { success: true, user };
+      }
+
       if (actionType === "follow") {
         const { authorId } = payload;
         if (!authorId) throw new Error("authorId is required");
@@ -709,20 +715,36 @@ export async function fetchAdminDataFromFirestore() {
       writerApplications.push(docSnap.data());
     });
 
+    const ordersSnap = await getDocs(collection(firebaseDb, "orders"));
+    const orders: any[] = [];
+    ordersSnap.forEach((docSnap) => {
+      orders.push(docSnap.data());
+    });
+
+    const settlementsSnap = await getDocs(collection(firebaseDb, "settlements"));
+    const settlements: any[] = [];
+    settlementsSnap.forEach((docSnap) => {
+      settlements.push(docSnap.data());
+    });
+
     // Sort appropriately
     const sortedWr = withdrawRequests.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     const sortedGh = globalHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     const sortedApps = writerApplications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const sortedOrders = orders.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const sortedSettlements = settlements.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     return {
       withdrawRequests: sortedWr,
       users,
       globalHistory: sortedGh,
-      writerApplications: sortedApps
+      writerApplications: sortedApps,
+      orders: sortedOrders,
+      settlements: sortedSettlements
     };
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, "admin");
-    return { withdrawRequests: [], users: [], globalHistory: [], writerApplications: [] };
+    return { withdrawRequests: [], users: [], globalHistory: [], writerApplications: [], orders: [], settlements: [] };
   }
 }
 
@@ -843,6 +865,58 @@ export async function approveWriterApplicationInFirestore(appId: string, status:
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+    return null;
+  }
+}
+
+// Create a new print order in Firestore
+export async function createOrderInFirestore(orderData: any) {
+  if (!firebaseDb) return null;
+  const path = "orders";
+  try {
+    const orderId = orderData.id || "R2P-" + Math.floor(100000 + Math.random() * 900000);
+    const newOrder = {
+      ...orderData,
+      id: orderId,
+      timestamp: new Date().toISOString()
+    };
+    await setDoc(doc(firebaseDb, "orders", orderId), newOrder);
+    return newOrder;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+    return null;
+  }
+}
+
+// Update order printing status in Firestore
+export async function updateOrderStatusInFirestore(orderId: string, status: string) {
+  if (!firebaseDb) return null;
+  const path = `orders/${orderId}`;
+  try {
+    const orderRef = doc(firebaseDb, "orders", orderId);
+    await updateDoc(orderRef, { printingStatus: status });
+    return { success: true };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+    return null;
+  }
+}
+
+// Create settlement in Firestore
+export async function createSettlementInFirestore(settlementData: any) {
+  if (!firebaseDb) return null;
+  const path = "settlements";
+  try {
+    const settlementId = settlementData.id || "set-" + Date.now();
+    const newSettlement = {
+      ...settlementData,
+      id: settlementId,
+      timestamp: new Date().toISOString()
+    };
+    await setDoc(doc(firebaseDb, "settlements", settlementId), newSettlement);
+    return newSettlement;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
     return null;
   }
 }
