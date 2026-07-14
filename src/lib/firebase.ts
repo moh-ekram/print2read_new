@@ -20,9 +20,9 @@ const firebaseConfig = {
 
 // Check if valid Firebase credentials are provided
 const isFirebaseConfigured = !!(
-  firebaseConfig.apiKey && 
-  firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY" &&
-  firebaseConfig.authDomain
+  env.VITE_FIREBASE_API_KEY && 
+  env.VITE_FIREBASE_API_KEY !== "YOUR_FIREBASE_API_KEY" &&
+  env.VITE_FIREBASE_API_KEY !== "AIzaSyAvRhzJrt8YlELCTWqFOr4AMns8Q5zIp3k"
 );
 
 let firebaseApp;
