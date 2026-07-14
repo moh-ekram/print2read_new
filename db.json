@@ -1,0 +1,231 @@
+{
+  "users": [
+    {
+      "uid": "reader-1",
+      "email": "reader@readtoprint.com",
+      "displayName": "সাকিব আল হাসান (Reader)",
+      "role": "reader",
+      "coins": 450,
+      "currentBalance": 500,
+      "bookmarkedPostIds": [
+        "post-1",
+        "post-3"
+      ],
+      "printBasketPostIds": [
+        "post-2"
+      ],
+      "followingAuthors": [
+        "writer-1"
+      ],
+      "bio": "বই পড়তে এবং নতুন নতুন আর্টিকেল সংগ্রহ করতে ভালোবাসি।"
+    },
+    {
+      "uid": "writer-1",
+      "email": "writer@readtoprint.com",
+      "displayName": "রবীন্দ্রনাথ ঠাকুর (Writer)",
+      "role": "writer",
+      "coins": 1200,
+      "currentBalance": 2450,
+      "bookmarkedPostIds": [
+        "post-2"
+      ],
+      "printBasketPostIds": [],
+      "followingAuthors": [],
+      "bio": "সাহিত্যিক, গবেষক এবং নতুন যুগের ডিজিটাল লেখক।"
+    },
+    {
+      "uid": "admin-1",
+      "email": "admin@readtoprint.com",
+      "displayName": "প্রশাসক (Admin)",
+      "role": "admin",
+      "coins": 10000,
+      "currentBalance": 50000,
+      "bookmarkedPostIds": [],
+      "printBasketPostIds": [],
+      "followingAuthors": [],
+      "bio": "Read-to-Print সিস্টেমের মূল অ্যাডমিন।"
+    }
+  ],
+  "posts": [
+    {
+      "id": "post-1",
+      "title": "সোনার তরী: কাব্যিক জীবনের নতুন রূপরেখা",
+      "excerpt": "জীবনের স্রোতে ভেসে যাওয়া এবং শেষ পর্যন্ত সোনালী নৌকায় নিজের সৃষ্টির স্থান পাওয়ার এক অপার্থিব রূপক...",
+      "content": "মহাবিশ্বের সৃষ্টি ও লয়ের মাঝে মানুষের জীবন এক ক্ষণস্থায়ী তরণী। রবীন্দ্রনাথ ঠাকুরের ‘সোনার তরী’ কবিতায় আমরা দেখি মানুষ তার সারা জীবনের সাধনা ও সোনালী ফসল পরম যত্নে মহাকালের নৌকায় তুলে দেয়। কিন্তু সেই নৌকায় মানুষের নিজের স্থান হয় না। এই গভীর জীবনদর্শন আমাদের স্মরণ করিয়ে দেয় যে, মানুষের কাজ বেঁচে থাকে, মানুষ নয়। আধুনিক যুগে আমরা যখনই কিছু প্রিন্ট করি বা লিখে প্রকাশ করি, আমরা মূলত এই সোনার তরীতেই আমাদের সোনালী শস্য তুলে দিচ্ছি।",
+      "authorId": "writer-1",
+      "authorName": "রবীন্দ্রনাথ ঠাকুর (Writer)",
+      "viewCount": 142,
+      "addToPrintCount": 38,
+      "priceCoins": 10,
+      "priceMoney": 20,
+      "createdAt": "2026-07-01T10:00:00Z"
+    },
+    {
+      "id": "post-2",
+      "title": "ডিজিটাল প্রিন্ট প্রযুক্তির বিবর্তন ও আমাদের ভবিষ্যৎ",
+      "excerpt": "কীভাবে থ্রিডি এবং পেপার প্রিন্ট আমাদের সমাজকে বদলে দিচ্ছে এবং রিড-টু-প্রিন্ট ধারণার উৎপত্তি...",
+      "content": "ডিজিটাল প্রিন্ট প্রযুক্তি গত দুই দশকে অভাবনীয় পরিবর্তন এনেছে। কাগজের পাতা থেকে শুরু করে থ্রিডি বায়ো-প্রিন্টিং পর্যন্ত সবকিছুই এখন আমাদের হাতের মুঠোয়। এই ব্লগে আমরা আলোচনা করব কীভাবে পাঠক তার স্ক্রিনে পড়া একটি আর্টিকেল বা ডকুমেন্ট সরাসরি ফিজিক্যাল কপিরূপে নিজের পড়ার টেবিলে নিয়ে আসতে পারে। রিড-টু-প্রিন্ট মূলত এই দুটি জগতের একটি সংযোগ সেতু।",
+      "authorId": "writer-1",
+      "authorName": "রবীন্দ্রনাথ ঠাকুর (Writer)",
+      "viewCount": 98,
+      "addToPrintCount": 15,
+      "priceCoins": 15,
+      "priceMoney": 30,
+      "createdAt": "2026-07-05T14:30:00Z"
+    },
+    {
+      "id": "post-3",
+      "title": "কৃত্রিম বুদ্ধিমত্তা এবং বাংলা সাহিত্যের সংযোগ",
+      "excerpt": "বাংলা ভাষা প্রযুক্তির সাথে কতটুকু খাপ খাইয়ে নিতে পেরেছে এবং এআই রাইটিং এর সম্ভাবনা ও সীমাবদ্ধতা...",
+      "content": "কৃত্রিম বুদ্ধিমত্তা আজ বিশ্বজুড়ে আলোচনার শীর্ষে। আমাদের বাংলা সাহিত্যও এর বাইরে নয়। বড় ভাষার মডেলগুলো এখন চমৎকার বাংলা কবিতা ও প্রবন্ধ লিখতে পারছে। তবে সাহিত্যের মূল প্রাণ—আবেগ এবং অনুভূতি—তা কি এআই ধারণ করতে পারে? এই প্রবন্ধে আমরা যুক্তি এবং তর্কের মাধ্যমে দেখব কীভাবে একজন লেখক কৃত্রিম বুদ্ধিমত্তাকে তার সহায়ক হিসেবে ব্যবহার করতে পারেন, প্রতিযোগী হিসেবে নয়।",
+      "authorId": "writer-1",
+      "authorName": "রবীন্দ্রনাথ ঠাকুর (Writer)",
+      "viewCount": 220,
+      "addToPrintCount": 64,
+      "priceCoins": 5,
+      "priceMoney": 10,
+      "createdAt": "2026-07-10T08:15:00Z"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "tx-1",
+      "userId": "reader-1",
+      "type": "buy_coins",
+      "amountCoins": 100,
+      "amountMoney": 200,
+      "timestamp": "2026-07-11T09:00:00Z"
+    },
+    {
+      "id": "tx-2",
+      "userId": "reader-1",
+      "type": "print_post",
+      "amountCoins": 15,
+      "amountMoney": 30,
+      "postId": "post-2",
+      "postTitle": "ডিজিটাল প্রিন্ট প্রযুক্তির বিবর্তন ও আমাদের ভবিষ্যৎ",
+      "timestamp": "2026-07-12T11:20:00Z"
+    },
+    {
+      "id": "tx-3",
+      "userId": "reader-1",
+      "type": "read_post",
+      "amountCoins": 10,
+      "amountMoney": 20,
+      "postId": "post-1",
+      "postTitle": "সোনার তরী: কাব্যিক জীবনের নতুন রূপরেখা",
+      "timestamp": "2026-07-13T06:45:00Z"
+    }
+  ],
+  "withdrawRequests": [
+    {
+      "id": "wr-1",
+      "userId": "writer-1",
+      "userEmail": "writer@readtoprint.com",
+      "amount": 500,
+      "paymentMethod": "bKash",
+      "accountNumber": "01712345678",
+      "status": "pending",
+      "timestamp": "2026-07-12T15:00:00Z"
+    }
+  ],
+  "globalHistory": [
+    {
+      "id": "gh-1",
+      "userDisplayName": "সাকিব আল হাসান (Reader)",
+      "postTitle": "ডিজিটাল প্রিন্ট প্রযুক্তির বিবর্তন ও আমাদের ভবিষ্যৎ",
+      "timestamp": "2026-07-12T11:20:00Z"
+    }
+  ],
+  "writerApplications": [
+    {
+      "id": "app-1784039909977",
+      "userId": "test-user",
+      "userEmail": "test@example.com",
+      "userDisplayName": "test",
+      "category": "প্রবন্ধ ও কলাম",
+      "motivation": "",
+      "sample1Title": "Title 1",
+      "sample1Content": "Content 1",
+      "sample2Title": "Title 2",
+      "sample2Content": "Content 2",
+      "status": "pending",
+      "timestamp": "2026-07-14T14:38:29.977Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "ord-101",
+      "customerName": "আরিফুর রহমান",
+      "customerPhone": "01712345678",
+      "customerAddress": "বাসা ১২, রোড ৪, ধানমন্ডি",
+      "customerCity": "ঢাকা",
+      "totalPages": 32,
+      "articleTitles": [
+        "সোনার তরী: কাব্যিক জীবনের নতুন রূপরেখা",
+        "ডিজিটাল প্রিন্ট প্রযুক্তির বিবর্তন ও আমাদের ভবিষ্যৎ"
+      ],
+      "totalPrice": 280,
+      "paymentStatus": "Paid",
+      "printingStatus": "Delivered",
+      "bookName": "আমার নির্বাচিত সোনার তরী সংকলন",
+      "timestamp": "2026-07-10T14:30:00Z"
+    },
+    {
+      "id": "ord-102",
+      "customerName": "সানজিদা আক্তার",
+      "customerPhone": "01823456789",
+      "customerAddress": "হাউজ ৪২, ও আর নিজাম রোড",
+      "customerCity": "চট্টগ্রাম",
+      "totalPages": 48,
+      "articleTitles": [
+        "কৃত্রিম বুদ্ধিমত্তা এবং বাংলা সাহিত্যের সংযোগ",
+        "সোনার তরী: কাব্যিক জীবনের নতুন রূপরেখা"
+      ],
+      "totalPrice": 420,
+      "paymentStatus": "Paid",
+      "printingStatus": "Printing",
+      "bookName": "এআই ও কবিতা সংগ্রহ",
+      "timestamp": "2026-07-13T09:15:00Z"
+    },
+    {
+      "id": "ord-103",
+      "customerName": "তানভীর হাসান",
+      "customerPhone": "01911223344",
+      "customerAddress": "৩/খ, জেল রোড",
+      "customerCity": "সিলেট",
+      "totalPages": 24,
+      "articleTitles": [
+        "ডিজিটাল প্রিন্ট প্রযুক্তির বিবর্তন ও আমাদের ভবিষ্যৎ"
+      ],
+      "totalPrice": 180,
+      "paymentStatus": "Unpaid",
+      "printingStatus": "Received",
+      "bookName": "প্রযুক্তি ও ভবিষ্যৎ",
+      "timestamp": "2026-07-14T11:00:00Z"
+    }
+  ],
+  "settlements": [
+    {
+      "id": "set-2026-06",
+      "monthLabel": "জুন ২০২৬",
+      "budgetPool": 15000,
+      "totalCoins": 3000,
+      "timestamp": "2026-06-30T18:00:00Z",
+      "allocations": [
+        {
+          "writerUid": "writer-1",
+          "writerName": "রবীন্দ্রনাথ ঠাকুর (Writer)",
+          "coins": 2000,
+          "amountBDT": 10000
+        },
+        {
+          "writerUid": "writer-2",
+          "writerName": "কাজী নজরুল ইসলাম",
+          "coins": 1000,
+          "amountBDT": 5000
+        }
+      ]
+    }
+  ]
+}

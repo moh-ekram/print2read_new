@@ -17,7 +17,9 @@ import {
   fetchTransactionsFromFirestore, 
   createWithdrawRequestInFirestore, 
   handleWithdrawActionInFirestore, 
-  fetchAdminDataFromFirestore 
+  fetchAdminDataFromFirestore,
+  submitWriterApplicationInFirestore,
+  approveWriterApplicationInFirestore
 } from "./lib/firestoreService";
 import CoinsModal from "./components/CoinsModal";
 import ReaderPanel from "./components/ReaderPanel";
@@ -134,7 +136,7 @@ export default function App() {
         const actualEmail = email || firebaseAuth?.currentUser?.email || undefined;
         const profile = await getUserProfileFromFirestore(uid, actualEmail ? { email: actualEmail } : undefined);
         if (profile) {
-          const updatedProfile = { ...profile };
+          const updatedProfile = { ...profile } as any;
           if (actualEmail) {
             updatedProfile.email = actualEmail;
           }
@@ -496,58 +498,98 @@ export default function App() {
       return;
     }
     try {
-      const response = await fetch("/api/admin/applications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      if (isFirebaseConfigured) {
+        const result = await submitWriterApplicationInFirestore({
           userId: currentUser.uid,
-          userEmail: currentUser.email,
-          userDisplayName: currentUser.displayName,
+          userEmail: currentUser.email || `${currentUser.uid}@readtoprint.com`,
+          userDisplayName: currentUser.displayName || currentUser.email?.split("@")[0] || `user-${currentUser.uid.slice(0, 5)}`,
           category: appCategory,
           motivation: appMotivation,
           sample1Title,
           sample1Content,
           sample2Title,
           sample2Content
-        })
-      });
+        });
 
-      if (response.ok) {
-        alert("আপনার লেখক আবেদনটি সফলভাবে সাবমিট করা হয়েছে এবং অ্যাডমিন মূল্যায়নের জন্য পাঠানো হয়েছে।");
-        setAppMotivation("");
-        setSample1Title("");
-        setSample1Content("");
-        setSample2Title("");
-        setSample2Content("");
-        fetchAdminData();
-        await loadUserSession(currentUser.uid);
+        if (result && result.success) {
+          alert("আপনার লেখক আবেদনটি সফলভাবে সাবমিট করা হয়েছে এবং অ্যাডমিন মূল্যায়নের জন্য পাঠানো হয়েছে।");
+          setAppMotivation("");
+          setSample1Title("");
+          setSample1Content("");
+          setSample2Title("");
+          setSample2Content("");
+          fetchAdminData();
+          await loadUserSession(currentUser.uid);
+        } else {
+          alert("আবেদন সাবমিট করতে ত্রুটি হয়েছে।");
+        }
       } else {
-        const err = await response.json();
-        alert(err.error || "আবেদন সাবমিট করতে ত্রুটি হয়েছে।");
+        const response = await fetch("/api/admin/applications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: currentUser.uid,
+            userEmail: currentUser.email,
+            userDisplayName: currentUser.displayName,
+            category: appCategory,
+            motivation: appMotivation,
+            sample1Title,
+            sample1Content,
+            sample2Title,
+            sample2Content
+          })
+        });
+
+        if (response.ok) {
+          alert("আপনার লেখক আবেদনটি সফলভাবে সাবমিট করা হয়েছে এবং অ্যাডমিন মূল্যায়নের জন্য পাঠানো হয়েছে।");
+          setAppMotivation("");
+          setSample1Title("");
+          setSample1Content("");
+          setSample2Title("");
+          setSample2Content("");
+          fetchAdminData();
+          await loadUserSession(currentUser.uid);
+        } else {
+          const err = await response.json();
+          alert(err.error || "আবেদন সাবমিট করতে ত্রুটি হয়েছে।");
+        }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("সার্ভার ত্রুটি ঘটেছে।");
+      alert(e?.message || "সার্ভার ত্রুটি ঘটেছে।");
     }
   };
 
   const handleApproveApplication = async (applicationId: string, status: "approved" | "rejected") => {
     try {
-      const response = await fetch(`/api/admin/applications/${applicationId}/action`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status })
-      });
-
-      if (response.ok) {
-        await fetchAdminData();
-        await fetchPosts();
-        if (currentUser) {
-          await loadUserSession(currentUser.uid);
+      if (isFirebaseConfigured) {
+        const result = await approveWriterApplicationInFirestore(applicationId, status);
+        if (result && result.success) {
+          await fetchAdminData();
+          await fetchPosts();
+          if (currentUser) {
+            await loadUserSession(currentUser.uid);
+          }
+        } else {
+          throw new Error("অ্যাকশন সম্পন্ন করা যায়নি।");
         }
       } else {
-        const err = await response.json();
-        throw new Error(err.error || "অ্যাকশন সম্পন্ন করা যায়নি।");
+        const response = await fetch(`/api/admin/applications/${applicationId}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status })
+        });
+
+        if (response.ok) {
+          await fetchAdminData();
+          await fetchPosts();
+          if (currentUser) {
+            await loadUserSession(currentUser.uid);
+          }
+        } else {
+          const err = await response.json();
+          throw new Error(err.error || "অ্যাকশন সম্পন্ন করা যায়নি।");
+        }
       }
     } catch (e: any) {
       console.error(e);

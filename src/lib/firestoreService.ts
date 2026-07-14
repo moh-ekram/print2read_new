@@ -210,20 +210,44 @@ export async function getUserProfileFromFirestore(uid: string, defaultData?: { d
 
     if (userSnap.exists()) {
       const data = userSnap.data();
+      let emailVal = data.email || defaultData?.email;
+      let needsUpdate = false;
+      
       // If the email field is empty or contains the placeholder "@readtoprint.com", update it with their real email if available
       if ((!data.email || data.email.endsWith("@readtoprint.com")) && defaultData?.email && !defaultData.email.endsWith("@readtoprint.com")) {
-        data.email = defaultData.email;
-        await updateDoc(userDocRef, { email: defaultData.email });
+        emailVal = defaultData.email;
+        needsUpdate = true;
       }
-      return data;
+
+      let roleVal = data.role;
+      // Force admin role for the specified user
+      if (emailVal?.toLowerCase().trim() === "mohammad.001ekram@gmail.com" && data.role !== "admin") {
+        roleVal = "admin";
+        needsUpdate = true;
+      }
+
+      if (needsUpdate) {
+        await updateDoc(userDocRef, { email: emailVal, role: roleVal });
+        data.email = emailVal;
+        data.role = roleVal;
+      }
+
+      return { uid, ...data };
     } else {
       // Lazy Create User Profile
-      const emailVal = defaultData?.email || (uid.includes("@") ? uid : `${uid}@readtoprint.com`);
+      let emailVal = defaultData?.email || (uid.includes("@") ? uid : `${uid}@readtoprint.com`);
+      let roleVal = defaultData?.role || "reader";
+
+      // Force admin role for the specified user
+      if (emailVal?.toLowerCase().trim() === "mohammad.001ekram@gmail.com") {
+        roleVal = "admin";
+      }
+
       const newUser = {
         uid,
         email: emailVal,
         displayName: defaultData?.displayName || uid.split("-")[0] || "User",
-        role: defaultData?.role || "reader",
+        role: roleVal,
         coins: 100,
         currentBalance: 200,
         bookmarkedPostIds: [],
@@ -642,7 +666,7 @@ export async function handleWithdrawActionInFirestore(requestId: string, status:
 
 // Fetch all admin data
 export async function fetchAdminDataFromFirestore() {
-  if (!firebaseDb) return { withdrawRequests: [], users: [], globalHistory: [] };
+  if (!firebaseDb) return { withdrawRequests: [], users: [], globalHistory: [], writerApplications: [] };
   try {
     const wrSnap = await getDocs(collection(firebaseDb, "withdrawRequests"));
     const withdrawRequests: any[] = [];
@@ -671,17 +695,143 @@ export async function fetchAdminDataFromFirestore() {
       globalHistory.push(docSnap.data());
     });
 
+    const appSnap = await getDocs(collection(firebaseDb, "writerApplications"));
+    const writerApplications: any[] = [];
+    appSnap.forEach((docSnap) => {
+      writerApplications.push(docSnap.data());
+    });
+
     // Sort appropriately
     const sortedWr = withdrawRequests.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     const sortedGh = globalHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const sortedApps = writerApplications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     return {
       withdrawRequests: sortedWr,
       users,
-      globalHistory: sortedGh
+      globalHistory: sortedGh,
+      writerApplications: sortedApps
     };
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, "admin");
-    return { withdrawRequests: [], users: [], globalHistory: [] };
+    return { withdrawRequests: [], users: [], globalHistory: [], writerApplications: [] };
+  }
+}
+
+// Submit Writer Application in Firestore
+export async function submitWriterApplicationInFirestore(appData: {
+  userId: string;
+  userEmail: string;
+  userDisplayName: string;
+  category: string;
+  motivation: string;
+  sample1Title: string;
+  sample1Content: string;
+  sample2Title: string;
+  sample2Content: string;
+}) {
+  if (!firebaseDb) return null;
+  const path = "writerApplications";
+  try {
+    const q = query(
+      collection(firebaseDb, "writerApplications"),
+      where("userId", "==", appData.userId),
+      where("status", "==", "pending")
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      throw new Error("আপনার একটি আবেদন ইতিপূর্বে জমা দেওয়া হয়েছে এবং তা অনুমোদনের অপেক্ষায় রয়েছে।");
+    }
+
+    const appId = "app-" + Date.now();
+    const newApp = {
+      id: appId,
+      userId: appData.userId,
+      userEmail: appData.userEmail,
+      userDisplayName: appData.userDisplayName || appData.userEmail.split("@")[0] || "User",
+      category: appData.category || "প্রবন্ধ ও কলাম",
+      motivation: appData.motivation || "",
+      sample1Title: appData.sample1Title,
+      sample1Content: appData.sample1Content,
+      sample2Title: appData.sample2Title,
+      sample2Content: appData.sample2Content,
+      status: "pending",
+      timestamp: new Date().toISOString()
+    };
+
+    await setDoc(doc(firebaseDb, "writerApplications", appId), newApp);
+    return { success: true, application: newApp };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+    return null;
+  }
+}
+
+// Approve/Reject Writer Application in Firestore
+export async function approveWriterApplicationInFirestore(appId: string, status: "approved" | "rejected") {
+  if (!firebaseDb) return null;
+  const path = `writerApplications/${appId}`;
+  try {
+    return await runTransaction(firebaseDb, async (transaction) => {
+      const appRef = doc(firebaseDb!, "writerApplications", appId);
+      const appSnap = await transaction.get(appRef);
+      if (!appSnap.exists()) throw new Error("Application not found.");
+      const application = appSnap.data();
+
+      transaction.update(appRef, { status });
+
+      if (status === "approved") {
+        // 1. Update user role to "writer" and set bio
+        const userRef = doc(firebaseDb!, "users", application.userId);
+        const userSnap = await transaction.get(userRef);
+        if (userSnap.exists()) {
+          transaction.update(userRef, {
+            role: "writer",
+            bio: application.motivation || userSnap.data().bio || "রেজিস্টার্ড লেখক।"
+          });
+        }
+
+        // 2. Publish 2 sample writings as real posts
+        const postId1 = "post-" + Date.now() + "-1";
+        const newPost1 = {
+          id: postId1,
+          title: application.sample1Title,
+          excerpt: application.sample1Content.substring(0, 100) + "...",
+          content: application.sample1Content,
+          authorId: application.userId,
+          authorName: application.userDisplayName || (userSnap.exists() ? userSnap.data().displayName : "Unknown Writer"),
+          viewCount: 0,
+          addToPrintCount: 0,
+          priceCoins: 10,
+          priceMoney: 20,
+          createdAt: new Date().toISOString()
+        };
+
+        const postId2 = "post-" + Date.now() + "-2";
+        const newPost2 = {
+          id: postId2,
+          title: application.sample2Title,
+          excerpt: application.sample2Content.substring(0, 100) + "...",
+          content: application.sample2Content,
+          authorId: application.userId,
+          authorName: application.userDisplayName || (userSnap.exists() ? userSnap.data().displayName : "Unknown Writer"),
+          viewCount: 0,
+          addToPrintCount: 0,
+          priceCoins: 10,
+          priceMoney: 20,
+          createdAt: new Date().toISOString()
+        };
+
+        const postRef1 = doc(firebaseDb!, "posts", postId1);
+        const postRef2 = doc(firebaseDb!, "posts", postId2);
+        transaction.set(postRef1, newPost1);
+        transaction.set(postRef2, newPost2);
+      }
+
+      return { success: true };
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    return null;
   }
 }
