@@ -650,53 +650,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-orange-100 selection:text-orange-800 text-slate-800">
-      {/* 1. TOP UTILITY HEADER FOR PREVIEW SWITCHING */}
-      <div className="bg-linear-to-r from-emerald-700 via-orange-600 to-violet-700 py-2 px-4 text-white text-xs font-semibold flex flex-wrap justify-between items-center gap-3 shadow-inner shrink-0 z-50">
-        <span className="flex items-center gap-1">
-          <Sparkles className="w-3.5 h-3.5 animate-pulse text-orange-200" />
-          রিয়েল-টাইম রোল প্রিভিউ প্যানেল (Role Toggles)
-        </span>
-        <div className="flex gap-2">
-          <button
-            id="switch-to-sakib-reader"
-            onClick={() => loadUserSession("reader-1")}
-            className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-              currentUser?.uid === "reader-1" 
-                ? "bg-white text-emerald-700 shadow-md" 
-                : "bg-white/10 text-white hover:bg-white/20"
-            }`}
-          >
-            সাকিব আল হাসান (Reader)
-          </button>
-          <button
-            id="switch-to-rabindranath-writer"
-            onClick={() => loadUserSession("writer-1")}
-            className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-              currentUser?.uid === "writer-1" 
-                ? "bg-white text-orange-700 shadow-md" 
-                : "bg-white/10 text-white hover:bg-white/20"
-            }`}
-          >
-            রবীন্দ্রনাথ ঠাকুর (Writer)
-          </button>
-          <button
-            id="switch-to-admin-test"
-            onClick={() => loadUserSession("admin-1")}
-            className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-              currentUser?.uid === "admin-1" 
-                ? "bg-white text-violet-700 shadow-md" 
-                : "bg-white/10 text-white hover:bg-white/20"
-            }`}
-          >
-            অ্যাডমিন প্যানেল (Admin)
-          </button>
-        </div>
-      </div>
-
       {/* Main Flex Layout with Left Sidebar */}
       <div className="flex-1 flex flex-row min-h-0 relative">
         {/* Left Sidebar navigation */}
-        <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between py-6 sticky top-0 h-[calc(100vh-36px)] shrink-0 hidden md:flex z-30 shadow-xs">
+        <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between py-6 sticky top-0 h-screen shrink-0 hidden md:flex z-30 shadow-xs">
           <div className="flex flex-col gap-6 px-4">
             {/* Header / Logo */}
             <div className="flex items-center gap-3 px-2">
@@ -720,72 +677,80 @@ export default function App() {
                   : item.id === "profile"
                   ? (activeNavView === "profile" && profileSection === "reader")
                   : activeNavView === item.id;
+
+                const isProfileItem = item.id === "profile";
+                const showAdminButton = isProfileItem && (currentUser?.email === "mohammad.001ekram@gmail.com" || currentUser?.role === "admin");
+
                 return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      if (item.id !== "home" && item.id !== "authors" && !currentUser) {
-                        setIsAuthOpen(true);
-                      } else {
-                        if (item.id === "writer-panel") {
-                          setActiveNavView("profile");
-                          setProfileSection("writer");
+                  <React.Fragment key={item.id}>
+                    <button
+                      onClick={() => {
+                        if (item.id !== "home" && item.id !== "authors" && !currentUser) {
+                          setIsAuthOpen(true);
                         } else {
-                          setActiveNavView(item.id);
+                          if (item.id === "writer-panel") {
+                            setActiveNavView("profile");
+                            setProfileSection("writer");
+                          } else {
+                            setActiveNavView(item.id);
+                          }
+                          setSelectedAuthorForView(null); // Reset when navigating
                         }
-                        setSelectedAuthorForView(null); // Reset when navigating
-                      }
-                    }}
-                    className={`w-full text-left p-3 rounded-2xl transition-all cursor-pointer flex items-center justify-between group border border-transparent ${
-                      isActive
-                        ? item.bgColor
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <IconComponent className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
-                        isActive ? item.activeText : "text-slate-400"
-                      }`} />
-                      <div className="min-w-0">
-                        <p className={`text-xs font-bold leading-none ${isActive ? item.activeText : "text-slate-700"}`}>
-                          {item.label}
-                        </p>
-                        <p className="text-[9px] text-slate-400 truncate mt-1">
-                          {item.desc}
-                        </p>
+                      }}
+                      className={`w-full text-left p-3 rounded-2xl transition-all cursor-pointer flex items-center justify-between group border border-transparent ${
+                        isActive
+                          ? item.bgColor
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <IconComponent className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
+                          isActive ? item.activeText : "text-slate-400"
+                        }`} />
+                        <div className="min-w-0">
+                          <p className={`text-xs font-bold leading-none ${isActive ? item.activeText : "text-slate-700"}`}>
+                            {item.label}
+                          </p>
+                          <p className="text-[9px] text-slate-400 truncate mt-1">
+                            {item.desc}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    {/* Badge */}
-                    {item.badge !== undefined && item.badge > 0 && (
-                      <span className="text-[9px] bg-orange-500 text-white font-bold font-mono px-2 py-0.5 rounded-full">
-                        {item.badge}
-                      </span>
+                      {/* Badge */}
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span className="text-[9px] bg-orange-500 text-white font-bold font-mono px-2 py-0.5 rounded-full">
+                          {item.badge}
+                        </span>
+                      )}
+                      {item.badgeText !== undefined && (
+                        <span className="text-[9px] bg-amber-100 text-amber-800 font-bold font-mono px-1.5 py-0.5 rounded-md">
+                          {item.badgeText}
+                        </span>
+                      )}
+                    </button>
+
+                    {showAdminButton && (
+                      <button
+                        onClick={() => {
+                          setActiveNavView("admin");
+                          setSelectedAuthorForView(null);
+                        }}
+                        className={`w-full text-left p-3 rounded-2xl transition-all cursor-pointer flex items-center gap-3 border border-transparent ${
+                          activeNavView === "admin"
+                            ? "bg-rose-50 text-rose-700 border border-rose-100"
+                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-850"
+                        }`}
+                      >
+                        <ShieldAlert className={`w-5 h-5 shrink-0 ${activeNavView === "admin" ? "text-rose-600" : "text-slate-400"}`} />
+                        <div>
+                          <p className="text-xs font-bold leading-none text-rose-700">অ্যাডমিন প্যানেল</p>
+                          <p className="text-[9px] text-slate-400 mt-1">রিকোয়েস্ট ও ইউজার কন্ট্রোল</p>
+                        </div>
+                      </button>
                     )}
-                    {item.badgeText !== undefined && (
-                      <span className="text-[9px] bg-amber-100 text-amber-800 font-bold font-mono px-1.5 py-0.5 rounded-md">
-                        {item.badgeText}
-                      </span>
-                    )}
-                  </button>
+                  </React.Fragment>
                 );
               })}
-
-              {currentUser?.role === "admin" && (
-                <button
-                  onClick={() => setActiveNavView("admin")}
-                  className={`w-full text-left p-3 rounded-2xl transition-all cursor-pointer flex items-center gap-3 border border-transparent ${
-                    activeNavView === "admin"
-                      ? "bg-rose-50 text-rose-700 border border-rose-100"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-850"
-                  }`}
-                >
-                  <ShieldAlert className={`w-5 h-5 shrink-0 ${activeNavView === "admin" ? "text-rose-600" : "text-slate-400"}`} />
-                  <div>
-                    <p className="text-xs font-bold leading-none text-rose-700">অ্যাডমিন প্যানেল</p>
-                    <p className="text-[9px] text-slate-400 mt-1">রিকোয়েস্ট ও ইউজার কন্ট্রোল</p>
-                  </div>
-                </button>
-              )}
             </nav>
           </div>
 
@@ -846,7 +811,7 @@ export default function App() {
                 {currentUser ? (
                   <div className="flex items-center gap-3 bg-slate-50 border border-slate-150 p-1 rounded-full">
                     <button
-                      onClick={() => setActiveNavView("balance")}
+                      onClick={() => setIsCoinsOpen(true)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-full shadow-3xs transition-all text-xs font-bold text-slate-700 cursor-pointer"
                     >
                       <Coins className="w-4 h-4 text-orange-500" />
@@ -893,51 +858,60 @@ export default function App() {
                 : item.id === "profile"
                 ? (activeNavView === "profile" && profileSection === "reader")
                 : activeNavView === item.id;
+
+              const isProfileItem = item.id === "profile";
+              const showAdminButton = isProfileItem && (currentUser?.email === "mohammad.001ekram@gmail.com" || currentUser?.role === "admin");
+
               return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    if (item.id !== "home" && item.id !== "authors" && !currentUser) {
-                      setIsAuthOpen(true);
-                    } else {
-                      if (item.id === "writer-panel") {
-                        setActiveNavView("profile");
-                        setProfileSection("writer");
+                <React.Fragment key={item.id}>
+                  <button
+                    onClick={() => {
+                      if (item.id !== "home" && item.id !== "authors" && !currentUser) {
+                        setIsAuthOpen(true);
                       } else {
-                        setActiveNavView(item.id);
+                        if (item.id === "writer-panel") {
+                          setActiveNavView("profile");
+                          setProfileSection("writer");
+                        } else {
+                          setActiveNavView(item.id);
+                        }
+                        setSelectedAuthorForView(null);
                       }
-                      setSelectedAuthorForView(null);
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-xl font-bold text-[11px] whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer shrink-0 border ${
-                    isActive
-                      ? item.bgColor
-                      : "bg-slate-50 text-slate-500 border-slate-150 hover:bg-slate-100"
-                  }`}
-                >
-                  <IconComponent className="w-3.5 h-3.5" />
-                  <span>{item.label}</span>
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span className="ml-1 bg-orange-500 text-white text-[9px] px-1 rounded-full font-mono font-bold">
-                      {item.badge}
-                    </span>
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-[11px] whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer shrink-0 border ${
+                      isActive
+                        ? item.bgColor
+                        : "bg-slate-50 text-slate-500 border-slate-150 hover:bg-slate-100"
+                    }`}
+                  >
+                    <IconComponent className="w-3.5 h-3.5" />
+                    <span>{item.label}</span>
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="ml-1 bg-orange-500 text-white text-[9px] px-1 rounded-full font-mono font-bold">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+
+                  {showAdminButton && (
+                    <button
+                      onClick={() => {
+                        setActiveNavView("admin");
+                        setSelectedAuthorForView(null);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl font-bold text-[11px] whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer shrink-0 border ${
+                        activeNavView === "admin"
+                          ? "bg-rose-50 text-rose-700 border-rose-100"
+                          : "bg-slate-50 text-slate-500 border-slate-150"
+                      }`}
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                      <span>অ্যাডমিন প্যানেল</span>
+                    </button>
                   )}
-                </button>
+                </React.Fragment>
               );
             })}
-            {currentUser?.role === "admin" && (
-              <button
-                onClick={() => setActiveNavView("admin")}
-                className={`px-3 py-1.5 rounded-xl font-bold text-[11px] whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer shrink-0 border ${
-                  activeNavView === "admin"
-                    ? "bg-rose-50 text-rose-700 border-rose-100"
-                    : "bg-slate-50 text-slate-500 border-slate-150"
-                }`}
-              >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>অ্যাডমিন</span>
-              </button>
-            )}
           </div>
 
           {/* 3. HERO BANNER */}
