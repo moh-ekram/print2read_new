@@ -1485,17 +1485,38 @@ export default function App() {
 
                           const tags = getPostTags(post);
 
+                          // Get a clean preview of the main content
+                          const getPostPreview = (p: Post) => {
+                            if (!p.content) return p.excerpt || "";
+                            
+                            // Remove markdown headings, bold, italic, lists, link markdown, etc. to make it clean readable text
+                            let cleanText = p.content
+                              .replace(/#+\s+.*/g, "") // remove headers
+                              .replace(/[\*\_~`]/g, "") // remove markdown styles like *, _, ~, `
+                              .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1") // replace [text](url) with text
+                              .replace(/-\s+/g, "") // remove list bullets
+                              .replace(/\s+/g, " ") // collapse multiple spaces
+                              .trim();
+
+                            if (cleanText.length < 5) {
+                              return p.excerpt || "";
+                            }
+                            return cleanText;
+                          };
+
+                          const previewText = getPostPreview(post);
+
                           return (
                             <motion.article 
                               key={post.id}
                               initial={{ opacity: 0, y: 12 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.25) }}
-                              className="bg-[#F5F4F0]/85 border border-[#E8E6DE]/80 rounded-[24px] p-6 md:p-8 flex flex-col justify-between hover:bg-[#F2F0EB]/95 hover:border-[#DFDDD5] hover:shadow-xs transition-all duration-300 relative group"
+                              className="bg-[#F5F4F0]/85 border border-[#E8E6DE]/80 rounded-[16px] p-4 md:p-5 flex flex-col justify-between hover:bg-[#F2F0EB]/95 hover:border-[#DFDDD5] hover:shadow-xs transition-all duration-300 relative group"
                             >
                               <div>
                                 {/* Top Row of the card */}
-                                <div className="flex items-center justify-between gap-4 mb-4">
+                                <div className="flex items-center justify-between gap-4 mb-2.5">
                                   {/* Left side: Tags */}
                                   <div className="flex items-center gap-2.5">
                                     {tags.map((tag, idx) => (
@@ -1552,13 +1573,13 @@ export default function App() {
                                 <h4 
                                   id={`feed-post-title-click-${post.id}`}
                                   onClick={() => handleOpenPostReader(post)}
-                                  className="text-xl md:text-2xl font-bold font-serif text-[#3B4FE4] hover:text-[#1D4ED8] transition-colors duration-300 cursor-pointer leading-snug tracking-tight mb-3 animate-fade-in"
+                                  className="text-lg md:text-xl font-bold font-serif text-[#3B4FE4] hover:text-[#1D4ED8] transition-colors duration-300 cursor-pointer leading-snug tracking-tight mb-1.5 animate-fade-in"
                                 >
                                   {post.title}
                                 </h4>
 
                                 {/* Author and Meta Row */}
-                                <div className="flex items-center gap-2 mb-4 text-xs text-slate-500">
+                                <div className="flex items-center gap-2 mb-2.5 text-xs text-slate-500">
                                   <img 
                                     src={getAuthorAvatar(post.authorName, post.authorId)} 
                                     alt={post.authorName} 
@@ -1577,14 +1598,14 @@ export default function App() {
                                   </span>
                                 </div>
 
-                                {/* Excerpt (Snippet) */}
-                                <p className="text-sm text-slate-600 leading-relaxed font-sans mb-6 line-clamp-2 max-w-3xl">
-                                  {post.excerpt}
+                                {/* Main Content Preview */}
+                                <p className="text-sm text-slate-600 leading-relaxed font-sans mb-3.5 line-clamp-3 max-w-3xl">
+                                  {previewText}
                                 </p>
                               </div>
 
                               {/* Bottom row of card actions */}
-                              <div className="flex items-center justify-between gap-4 pt-3 border-t border-[#E8E6DE]/50">
+                              <div className="flex items-center justify-between gap-4 pt-2.5 border-t border-[#E8E6DE]/50">
                                 {/* Left side: Read Full Article link */}
                                 <button
                                   id={`read-post-feed-${post.id}`}
