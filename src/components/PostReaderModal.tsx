@@ -13,6 +13,7 @@ interface PostReaderModalProps {
   onClose: () => void;
   onAction: (actionType: string, postId?: string, authorId?: string) => Promise<void>;
   onEditPost: (postId: string, title: string, excerpt: string, content: string, priceCoins: number, priceMoney: number) => Promise<void>;
+  onViewAuthorProfile?: (authorId: string, authorName: string) => void;
 }
 
 export default function PostReaderModal({
@@ -20,7 +21,8 @@ export default function PostReaderModal({
   profile,
   onClose,
   onAction,
-  onEditPost
+  onEditPost,
+  onViewAuthorProfile
 }: PostReaderModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(post.title);
@@ -235,12 +237,22 @@ export default function PostReaderModal({
               {/* Metadata row */}
               <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-brand-orange-500/10 text-brand-orange-600 font-serif font-bold rounded-full flex items-center justify-center">
+                  <div 
+                    onClick={() => onViewAuthorProfile && onViewAuthorProfile(post.authorId, post.authorName)}
+                    className="w-10 h-10 bg-brand-orange-500/10 text-brand-orange-600 font-serif font-bold rounded-full flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                    title={`${post.authorName} এর প্রোফাইল দেখুন`}
+                  >
                     {post.authorName.substring(0, 1)}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-serif font-bold text-slate-700 text-sm">{post.authorName}</span>
+                      <span 
+                        onClick={() => onViewAuthorProfile && onViewAuthorProfile(post.authorId, post.authorName)}
+                        className="font-serif font-bold text-slate-700 text-sm cursor-pointer hover:text-[#3B4FE4] hover:underline transition-colors"
+                        title={`${post.authorName} এর প্রোফাইল দেখুন`}
+                      >
+                        {post.authorName}
+                      </span>
                       {profile && !isAuthor && (
                         <button
                           id={`toggle-follow-btn-${post.id}`}

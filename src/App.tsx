@@ -147,6 +147,17 @@ export default function App() {
   const [selectedAuthorForView, setSelectedAuthorForView] = useState<any | null>(null);
   const [authorSearchQuery, setAuthorSearchQuery] = useState("");
 
+  const handleGoToAuthorProfile = (authorId: string, authorName: string) => {
+    const authorUser = (adminData.users || []).find((u: any) => u.uid === authorId) || {
+      uid: authorId,
+      displayName: authorName,
+      bio: "সাহিত্যের ভুবনে একজন নিবন্ধিত লেখক।"
+    };
+    setSelectedAuthorForView(authorUser);
+    setActiveNavView("authors");
+    setSelectedPost(null);
+  };
+
   // Loading states
   const [loadingPosts, setLoadingPosts] = useState(true);
 
@@ -1583,10 +1594,16 @@ export default function App() {
                                   <img 
                                     src={getAuthorAvatar(post.authorName, post.authorId)} 
                                     alt={post.authorName} 
-                                    className="w-7 h-7 rounded-full object-cover shrink-0 border border-[#E8E6DE] shadow-3xs"
+                                    className="w-7 h-7 rounded-full object-cover shrink-0 border border-[#E8E6DE] shadow-3xs cursor-pointer hover:scale-105 hover:opacity-90 transition-all"
                                     referrerPolicy="no-referrer"
+                                    onClick={() => handleGoToAuthorProfile(post.authorId, post.authorName)}
+                                    title={`${post.authorName} এর প্রোফাইল দেখুন`}
                                   />
-                                  <span className="font-bold text-slate-700 hover:text-[#3B4FE4] transition-colors">
+                                  <span 
+                                    onClick={() => handleGoToAuthorProfile(post.authorId, post.authorName)}
+                                    className="font-bold text-slate-700 hover:text-[#3B4FE4] transition-colors cursor-pointer hover:underline"
+                                    title={`${post.authorName} এর প্রোফাইল দেখুন`}
+                                  >
                                     {post.authorName}
                                   </span>
                                   <span className="text-slate-300">•</span>
@@ -1652,7 +1669,12 @@ export default function App() {
                     ) : (
                       <div className="space-y-1">
                         {topAuthors.slice(0, 5).map((author: any, idx) => (
-                          <div key={author.id} className="flex items-center justify-between text-xs py-1.5 hover:bg-slate-50/60 rounded-xl px-2 transition-colors">
+                          <div 
+                            key={author.id} 
+                            onClick={() => handleGoToAuthorProfile(author.id, author.name)}
+                            className="flex items-center justify-between text-xs py-1.5 hover:bg-slate-100 rounded-xl px-2 transition-colors cursor-pointer"
+                            title={`${author.name} এর প্রোফাইল দেখুন`}
+                          >
                             <div className="flex items-center gap-2">
                               <span className={`w-5 h-5 flex items-center justify-center rounded-full font-mono font-bold text-[10px] ${
                                 idx === 0 ? "bg-brand-amber/15 text-brand-amber" : idx === 1 ? "bg-brand-soft-teal/20 text-brand-deep-teal" : "bg-slate-100 text-slate-500"
@@ -1660,7 +1682,7 @@ export default function App() {
                                 {idx + 1}
                               </span>
                               <div>
-                                <p className="font-bold text-slate-700 font-serif">{author.name}</p>
+                                <p className="font-bold text-slate-700 hover:text-[#3B4FE4] font-serif transition-colors">{author.name}</p>
                                 <p className="text-[9px] text-slate-400">{author.postCount}টি লেখা</p>
                               </div>
                             </div>
@@ -2925,6 +2947,7 @@ export default function App() {
           onClose={() => setSelectedPost(null)}
           onAction={handleAction}
           onEditPost={handleEditPost}
+          onViewAuthorProfile={handleGoToAuthorProfile}
         />
       )}
 
