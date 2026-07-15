@@ -1343,13 +1343,13 @@ export default function App() {
           </div>
 
           {/* 3. HERO BANNER */}
-          <section className="bg-white border-b border-slate-200 py-6 shrink-0">
+          <section className="bg-[#160d52] border-b border-slate-200 py-6 shrink-0">
             <div className="max-w-[1550px] mx-auto px-4 md:px-8 text-center md:text-left flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl md:text-3xl font-serif font-bold text-slate-800 tracking-tight leading-tight">
+                <h2 className="text-2xl md:text-3xl font-serif font-bold text-[#00ffac] tracking-tight leading-tight">
                   মুদ্রণযোগ্য জ্ঞান ও সাহিত্যের আধুনিক মিলনমেলা
                 </h2>
-                <p className="text-xs md:text-sm text-slate-400 mt-2 max-w-3xl leading-relaxed">
+                <p className="text-xs md:text-sm text-[#ffffff] mt-2 max-w-3xl leading-relaxed">
                   রিড-টু-প্রিন্ট একটি সমন্বিত ডিজিটাল হাব। এখানে পাঠকেরা তাদের পছন্দের লেখাগুলো বাস্কেটে যুক্ত করতে পারেন ফিজিক্যাল প্রিন্ট নেওয়ার উদ্দেশ্যে, এবং লেখকেরা পান তাদের লেখার ভিউ, বাস্কেট ও আয়ের সঠিক পরিসংখ্যান।
                 </p>
               </div>
@@ -1376,7 +1376,7 @@ export default function App() {
                       onPublishPost={handlePublishPost}
                     />
                   )}
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+                  <div className="bg-[#e8e8e8] text-[#6bcdfb] p-6 rounded-2xl border border-slate-200 shadow-xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                       <div>
                         <h3 className="text-lg font-serif font-bold text-slate-800">সকল প্রকাশিত লেখা (All Articles)</h3>
