@@ -637,7 +637,7 @@ export default function App() {
   const handlePlaceOrder = async () => {
     if (!currentUser) return;
     try {
-      const basketPosts = posts.filter(p => currentUser?.printBasketPostIds.includes(p.id));
+      const basketPosts = posts.filter(p => (currentUser?.printBasketPostIds || []).includes(p.id));
       if (basketPosts.length === 0) return;
 
       let currentStartPage = 3;
@@ -685,16 +685,25 @@ export default function App() {
         await createOrderInFirestore(newOrder);
         await handleUserActionInFirestore(currentUser.uid, "checkout_basket", {});
       } else {
-        await fetch("/api/admin/orders", {
+        const orderRes = await fetch("/api/admin/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(newOrder)
         });
-        await fetch(`/api/users/${currentUser.uid}/action`, {
+        if (!orderRes.ok) {
+          const errData = await orderRes.json().catch(() => ({}));
+          throw new Error(errData.error || errData.message || `সার্ভার অর্ডার তৈরি করতে পারেনি (স্ট্যাটাস: ${orderRes.status})`);
+        }
+
+        const actionRes = await fetch(`/api/users/${currentUser.uid}/action`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ actionType: "checkout_basket" })
         });
+        if (!actionRes.ok) {
+          const errData = await actionRes.json().catch(() => ({}));
+          throw new Error(errData.error || errData.message || `সার্ভার ইউজার অ্যাকশন সম্পন্ন করতে পারেনি (স্ট্যাটাস: ${actionRes.status})`);
+        }
       }
 
       const updatedUser = { ...currentUser, printBasketPostIds: [] };
@@ -712,9 +721,23 @@ export default function App() {
       } else {
         fetchUserOrders(currentUser.uid);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Order processing error", e);
-      alert("অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। দয়া করে পুনরায় চেষ্টা করুন।");
+      let errorMsg = e instanceof Error ? e.message : String(e);
+      
+      // Try to parse Firestore error if serialized as JSON
+      try {
+        if (errorMsg.startsWith("{") && errorMsg.endsWith("}")) {
+          const parsed = JSON.parse(errorMsg);
+          if (parsed.error) {
+            errorMsg = parsed.error;
+          }
+        }
+      } catch (parseErr) {
+        // Ignore
+      }
+
+      alert(`অর্ডার সম্পন্ন করতে সমস্যা হয়েছে।\n\nত্রুটি (Error): ${errorMsg}\n\nদয়া করে পুনরায় চেষ্টা করুন বা সাহায্য চাইতে পারেন।`);
     }
   };
 
