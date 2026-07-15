@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import { motion } from "motion/react";
 import { UserProfile, Post, CoinTransaction, UserRole, Order } from "./types";
 import AuthModal from "./components/AuthModal";
 import { firebaseAuth, isFirebaseConfigured } from "./lib/firebase";
@@ -21,7 +22,8 @@ import {
   submitWriterApplicationInFirestore,
   approveWriterApplicationInFirestore,
   createOrderInFirestore,
-  updateOrderStatusInFirestore
+  updateOrderStatusInFirestore,
+  fetchUserOrdersFromFirestore
 } from "./lib/firestoreService";
 import CoinsModal from "./components/CoinsModal";
 import ReaderPanel from "./components/ReaderPanel";
@@ -29,6 +31,7 @@ import WriterPanel from "./components/WriterPanel";
 import AdminPanel from "./components/AdminPanel";
 import PostReaderModal from "./components/PostReaderModal";
 import FacebookPostBox from "./components/FacebookPostBox";
+import PdfPreviewModal from "./components/PdfPreviewModal";
 import { 
   BookOpen, 
   Coins, 
@@ -56,7 +59,9 @@ import {
   ChevronRight,
   CreditCard,
   Plus,
-  RefreshCw
+  RefreshCw,
+  Bookmark,
+  Layers
 } from "lucide-react";
 
 export default function App() {
@@ -192,6 +197,11 @@ export default function App() {
           setProfileView(updatedProfile.role);
           setProfileSection(updatedProfile.role === "writer" ? "writer" : "reader");
           fetchTransactions(updatedProfile.uid);
+          if (updatedProfile.role === "admin") {
+            fetchAdminData(updatedProfile);
+          } else {
+            fetchUserOrders(updatedProfile.uid);
+          }
         }
       } else {
         const response = await fetch(`/api/users/${uid}`);
@@ -205,6 +215,11 @@ export default function App() {
           setProfileView(profile.role);
           setProfileSection(profile.role === "writer" ? "writer" : "reader");
           fetchTransactions(profile.uid);
+          if (profile.role === "admin") {
+            fetchAdminData(profile);
+          } else {
+            fetchUserOrders(profile.uid);
+          }
         }
       }
     } catch (e) {
@@ -249,7 +264,28 @@ export default function App() {
     }
   };
 
-  const fetchAdminData = async () => {
+  const fetchUserOrders = async (uid: string) => {
+    try {
+      if (isFirebaseConfigured) {
+        const data = await fetchUserOrdersFromFirestore(uid);
+        setOrders(data);
+        localStorage.setItem("r2p_orders", JSON.stringify(data));
+      } else {
+        const response = await fetch(`/api/orders/${uid}`);
+        if (response.ok) {
+          const data = await response.json();
+          setOrders(data);
+          localStorage.setItem("r2p_orders", JSON.stringify(data));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch user orders", e);
+    }
+  };
+
+  const fetchAdminData = async (forceProfile?: UserProfile) => {
+    const userToCheck = forceProfile || currentUser;
+    if (!userToCheck || userToCheck.role !== "admin") return;
     try {
       if (isFirebaseConfigured) {
         const data = await fetchAdminDataFromFirestore();
@@ -284,7 +320,11 @@ export default function App() {
     setProfileView(updatedProfile.role);
     setProfileSection(updatedProfile.role === "writer" ? "writer" : "reader");
     fetchTransactions(updatedProfile.uid);
-    fetchAdminData();
+    if (updatedProfile.role === "admin") {
+      fetchAdminData(updatedProfile);
+    } else {
+      fetchUserOrders(updatedProfile.uid);
+    }
     if (!isFirebaseConfigured) {
       localStorage.setItem("sandbox_user_uid", updatedProfile.uid);
     }
@@ -320,7 +360,11 @@ export default function App() {
           // Refresh listings and metrics
           fetchPosts();
           fetchTransactions(currentUser.uid);
-          fetchAdminData();
+          if (currentUser.role === "admin") {
+            fetchAdminData();
+          } else {
+            fetchUserOrders(currentUser.uid);
+          }
 
           // If currently viewing the selected post, update its views/counters locally
           if (selectedPost && postId === selectedPost.id) {
@@ -345,7 +389,11 @@ export default function App() {
           // Refresh local listings and metrics
           fetchPosts();
           fetchTransactions(currentUser.uid);
-          fetchAdminData();
+          if (currentUser.role === "admin") {
+            fetchAdminData();
+          } else {
+            fetchUserOrders(currentUser.uid);
+          }
 
           // If currently viewing the selected post, update its views/counters locally
           if (selectedPost && postId === selectedPost.id) {
@@ -384,9 +432,13 @@ export default function App() {
           priceMoney
         });
         if (newPost) {
-          alert("আপনার লেখাটি সফলভাবে প্রকাশিত হয়েছে!");
+          alert("আপনাদের লেখাটি সফলভাবে প্রকাশিত হয়েছে!");
           fetchPosts();
-          fetchAdminData();
+          if (currentUser.role === "admin") {
+            fetchAdminData();
+          } else {
+            fetchUserOrders(currentUser.uid);
+          }
         } else {
           alert("লেখা প্রকাশ করতে ব্যর্থ হয়েছে।");
         }
@@ -408,7 +460,11 @@ export default function App() {
         if (response.ok) {
           alert("আপনার লেখাটি সফলভাবে প্রকাশিত হয়েছে!");
           fetchPosts();
-          fetchAdminData();
+          if (currentUser.role === "admin") {
+            fetchAdminData();
+          } else {
+            fetchUserOrders(currentUser.uid);
+          }
         } else {
           const err = await response.json();
           alert(err.error || "লেখা প্রকাশ করতে ব্যর্থ হয়েছে।");
@@ -434,7 +490,11 @@ export default function App() {
         if (updated) {
           setSelectedPost(updated);
           fetchPosts();
-          fetchAdminData();
+          if (currentUser.role === "admin") {
+            fetchAdminData();
+          } else {
+            fetchUserOrders(currentUser.uid);
+          }
           alert("লেখাটি সফলভাবে আপডেট করা হয়েছে।");
         } else {
           alert("আপডেট ব্যর্থ হয়েছে।");
@@ -450,7 +510,11 @@ export default function App() {
           const updated = await response.json();
           setSelectedPost(updated);
           fetchPosts();
-          fetchAdminData();
+          if (currentUser.role === "admin") {
+            fetchAdminData();
+          } else {
+            fetchUserOrders(currentUser.uid);
+          }
           alert("লেখাটি সফলভাবে আপডেট করা হয়েছে।");
         } else {
           const err = await response.json();
@@ -479,7 +543,11 @@ export default function App() {
       );
       if (result && result.success) {
         await loadUserSession(currentUser.uid);
-        await fetchAdminData();
+        if (currentUser.role === "admin") {
+          await fetchAdminData();
+        } else {
+          await fetchUserOrders(currentUser.uid);
+        }
       } else {
         throw new Error("উইথড্র সম্পন্ন করা যায়নি।");
       }
@@ -499,7 +567,11 @@ export default function App() {
       if (response.ok) {
         const data = await response.json();
         setCurrentUser(data.user);
-        fetchAdminData();
+        if (data.user.role === "admin") {
+          fetchAdminData();
+        } else {
+          fetchUserOrders(data.user.uid);
+        }
       } else {
         const err = await response.json();
         throw new Error(err.error || "উইথড্র সম্পন্ন করা যায়নি।");
@@ -635,7 +707,11 @@ export default function App() {
       setPlacedOrder(newOrder);
       setCheckoutStep("success");
       
-      fetchAdminData();
+      if (currentUser.role === "admin") {
+        fetchAdminData();
+      } else {
+        fetchUserOrders(currentUser.uid);
+      }
     } catch (e) {
       console.error("Order processing error", e);
       alert("অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। দয়া করে পুনরায় চেষ্টা করুন।");
@@ -1303,26 +1379,17 @@ export default function App() {
                         <p className="text-xs font-medium">কোনো লেখা খুঁজে পাওয়া যায়নি।</p>
                       </div>
                     ) : (
-                      <div className="divide-y divide-slate-100">
-                        {filteredPosts.map((post) => {
+                      <div className="flex flex-col gap-6">
+                        {filteredPosts.map((post, index) => {
                           const isBookmarked = currentUser?.bookmarkedPostIds.includes(post.id) || false;
                           const isAdded = currentUser?.printBasketPostIds.includes(post.id) || false;
-                          const authorInitial = post.authorName ? post.authorName.charAt(0) : "✍️";
                           
                           // Calculate reading time
                           const wordsCount = post.content ? post.content.trim().split(/\s+/).length : 0;
                           const readTime = Math.max(1, Math.ceil(wordsCount / 120));
 
-                          // Let's pick a soft pastel BG for the author's circle avatar based on their name length
-                          const bgColors = [
-                            "bg-purple-50 text-purple-600",
-                            "bg-orange-50 text-orange-600",
-                            "bg-emerald-50 text-emerald-600",
-                            "bg-rose-50 text-rose-600",
-                            "bg-blue-50 text-blue-600",
-                          ];
-                          const bgIndex = post.authorName ? post.authorName.length % bgColors.length : 0;
-                          const avatarStyle = bgColors[bgIndex];
+                          const numbersBengali = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
+                          const toBengaliNumber = (num: number) => num.toString().split("").map(digit => numbersBengali[parseInt(digit)] || digit).join("");
 
                           // Helper function for beautiful Bengali dates inside component
                           const formatBengaliDate = (isoString: string) => {
@@ -1333,8 +1400,6 @@ export default function App() {
                                 "জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন",
                                 "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"
                               ];
-                              const numbersBengali = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-                              const toBengaliNumber = (num: number) => num.toString().split("").map(digit => numbersBengali[parseInt(digit)] || digit).join("");
                               
                               const day = toBengaliNumber(date.getDate());
                               const month = months[date.getMonth()];
@@ -1345,96 +1410,184 @@ export default function App() {
                             }
                           };
 
+                          const getPostTags = (p: Post) => {
+                            const text = (p.title + " " + p.content + " " + p.excerpt).toLowerCase();
+                            const tags: string[] = [];
+                            
+                            // Check for science / astrophysics keywords
+                            if (text.includes("মহাবিশ্ব") || text.includes("কৃষ্ণগহ্বর") || text.includes("ব্ল্যাক হোল") || text.includes("নক্ষত্র") || text.includes("বিজ্ঞান") || text.includes("জ্যোতির্বিজ্ঞান") || text.includes("মহাকর্ষ")) {
+                              tags.push("বিজ্ঞান");
+                              tags.push("জ্যোতির্বিজ্ঞান");
+                            } else if (text.includes("প্রযুক্তি") || text.includes("ডিজিটাল") || text.includes("এআই") || text.includes("কম্পিউটার")) {
+                              tags.push("প্রযুক্তি");
+                              tags.push("ডিজিটাল");
+                            } else if (text.includes("কবিতা") || text.includes("কাব্য") || text.includes("সাহিত্য") || text.includes("রবীন্দ্রনাথ")) {
+                              tags.push("কাব্য");
+                              tags.push("সাহিত্য");
+                            } else if (text.includes("ইতিহাস") || text.includes("ঐতিহ্য")) {
+                              tags.push("ইতিহাস");
+                              tags.push("ঐতিহ্য");
+                            } else if (text.includes("দর্শন") || text.includes("চিন্তা") || text.includes("সমাজ")) {
+                              tags.push("দর্শন");
+                              tags.push("সমাজ");
+                            } else {
+                              const cat = getPostCategory(p);
+                              if (cat === "literature") {
+                                tags.push("কাব্য", "সাহিত্য");
+                              } else if (cat === "technology") {
+                                tags.push("প্রযুক্তি", "বিজ্ঞান");
+                              } else if (cat === "essay") {
+                                tags.push("প্রবন্ধ", "দর্শন");
+                              } else {
+                                tags.push("রচনা", "অন্যান্য");
+                              }
+                            }
+                            return tags;
+                          };
+
+                          const getAuthorAvatar = (authorName: string, authorId: string) => {
+                            if (authorName === "রবীন্দ্রনাথ দত্ত" || authorName.includes("রবীন্দ্রনাথ")) {
+                              return "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120&h=120";
+                            }
+                            const avatars = [
+                              "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120&h=120",
+                              "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=120&h=120",
+                              "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120&h=120",
+                              "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=120&h=120",
+                              "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120&h=120"
+                            ];
+                            const idx = authorName ? authorName.length % avatars.length : 0;
+                            return avatars[idx];
+                          };
+
+                          const tags = getPostTags(post);
+
                           return (
-                            <article 
+                            <motion.article 
                               key={post.id}
-                              className="py-6 first:pt-2 last:pb-2 group transition-all duration-300"
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.25) }}
+                              className="bg-[#F5F4F0]/85 border border-[#E8E6DE]/80 rounded-[24px] p-6 md:p-8 flex flex-col justify-between hover:bg-[#F2F0EB]/95 hover:border-[#DFDDD5] hover:shadow-xs transition-all duration-300 relative group"
                             >
-                              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                                <div className="flex-1 min-w-0">
-                                  {/* Author and Date metadata */}
-                                  <div className="flex items-center gap-2 mb-3 text-xs text-slate-400">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] uppercase shrink-0 ${avatarStyle}`}>
-                                      {authorInitial}
-                                    </div>
-                                    <span className="font-bold text-slate-600 hover:text-brand-deep-teal transition-colors">
-                                      {post.authorName}
-                                    </span>
-                                    <span className="text-slate-300">•</span>
-                                    <span>{formatBengaliDate(post.createdAt)}</span>
-                                    <span className="text-slate-300">•</span>
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                      {readTime} মিনিট পড়া
-                                    </span>
-                                  </div>
-
-                                  {/* Title & Excerpt */}
-                                  <h4 
-                                    id={`feed-post-title-click-${post.id}`}
-                                    onClick={() => handleOpenPostReader(post)}
-                                    className="text-lg md:text-xl font-bold font-serif text-slate-800 group-hover:text-brand-amber transition-colors cursor-pointer leading-snug mb-2"
-                                  >
-                                    {post.title}
-                                  </h4>
-                                  <p className="text-xs md:text-sm text-slate-500 leading-relaxed font-sans mb-4 line-clamp-2 max-w-2xl">
-                                    {post.excerpt}
-                                  </p>
-
-                                  {/* Bottom info stats bar */}
-                                  <div className="flex items-center gap-4 text-[11px] text-slate-400 font-mono">
-                                    <span className="flex items-center gap-1">👁️ {post.viewCount} ভিউ</span>
-                                    <span className="flex items-center gap-1 text-brand-amber font-bold">🖨️ {post.addToPrintCount} বার বাস্কেটে যুক্ত</span>
-                                  </div>
-                                </div>
-
-                                {/* Actions area */}
-                                <div className="flex md:flex-col items-center md:items-end justify-between md:justify-start gap-3 shrink-0 self-stretch md:self-auto pt-2 md:pt-0 border-t md:border-0 border-slate-50">
-                                  {/* Bookmark Button */}
-                                  {currentUser && (
-                                    <button
-                                      id={`toggle-bookmark-feed-${post.id}`}
-                                      onClick={() => handleAction("bookmark", post.id)}
-                                      className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-                                        isBookmarked 
-                                          ? "bg-brand-soft-teal/15 border-brand-soft-teal/30 text-brand-deep-teal" 
-                                          : "bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-                                      }`}
-                                      title={isBookmarked ? "বুকমার্ক থেকে সরান" : "বুকমার্ক করুন"}
-                                    >
-                                      <BookMarked className={`w-4 h-4 ${isBookmarked ? "fill-current text-brand-deep-teal" : ""}`} />
-                                    </button>
-                                  )}
-
-                                  {/* Read & Add to Basket Button */}
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      id={`read-post-feed-${post.id}`}
-                                      onClick={() => handleOpenPostReader(post)}
-                                      className="py-1.5 px-3.5 hover:bg-brand-soft-teal/10 text-brand-deep-teal border border-slate-200 hover:border-brand-soft-teal/40 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-3xs"
-                                    >
-                                      পড়ুন
-                                    </button>
-
-                                    {currentUser?.uid !== post.authorId && (
-                                      <button
-                                        id={`basket-post-feed-${post.id}`}
-                                        onClick={() => handleAction("basket", post.id)}
-                                        className={`py-1.5 px-4 rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer flex items-center gap-1.5 ${
-                                          isAdded 
-                                            ? "bg-brand-deep-teal text-white hover:bg-brand-deep-teal/95" 
-                                            : "bg-brand-amber hover:bg-brand-amber/90 text-white"
+                              <div>
+                                {/* Top Row of the card */}
+                                <div className="flex items-center justify-between gap-4 mb-4">
+                                  {/* Left side: Tags */}
+                                  <div className="flex items-center gap-2.5">
+                                    {tags.map((tag, idx) => (
+                                      <span 
+                                        key={idx}
+                                        className={`text-xs font-bold font-serif transition-colors ${
+                                          idx === 0 
+                                            ? "bg-[#EAE8E0] text-[#334155] px-3.5 py-1.5 rounded-xl shadow-3xs" 
+                                            : "text-slate-500 font-medium hover:text-slate-800"
                                         }`}
                                       >
-                                        <Printer className="w-3.5 h-3.5" />
-                                        <span>{isAdded ? "বাস্কেটে আছে" : "বাস্কেটে যুক্ত করুন"}</span>
-                                        <span className="font-mono text-[10px] opacity-90 font-normal">({post.priceCoins} CC)</span>
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+
+                                  {/* Right side: Coin Price, Bookmark, and Layers icons */}
+                                  <div className="flex items-center gap-3">
+                                    {/* Golden Coin Price badge */}
+                                    <div className="bg-[#FFFDF2] border border-[#FFE7A3] rounded-xl px-3 py-1 flex items-center gap-2 text-[#C27803] font-bold text-xs shadow-3xs hover:scale-105 transition-transform">
+                                      <div className="w-4 h-4 bg-gradient-to-tr from-[#FFB800] to-[#FFE500] rounded-full border border-[#D48806]/35 flex items-center justify-center text-[9px] text-white shadow-3xs select-none">
+                                        🪙
+                                      </div>
+                                      <span className="font-mono">{toBengaliNumber(post.priceCoins)}</span>
+                                    </div>
+
+                                    {/* Bookmark Ribbon */}
+                                    {currentUser && (
+                                      <button
+                                        id={`toggle-bookmark-feed-${post.id}`}
+                                        onClick={() => handleAction("bookmark", post.id)}
+                                        className={`p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center border hover:scale-105 ${
+                                          isBookmarked 
+                                            ? "bg-indigo-50 border-indigo-100 text-indigo-600" 
+                                            : "bg-white/80 border-[#E8E6DE]/70 text-slate-400 hover:text-slate-600 hover:bg-white"
+                                        }`}
+                                        title={isBookmarked ? "বুকমার্ক থেকে সরান" : "বুকমার্ক করুন"}
+                                      >
+                                        <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? "fill-current text-indigo-600" : ""}`} />
                                       </button>
                                     )}
+
+                                    {/* Layers Stack Icon */}
+                                    <button 
+                                      className="p-2 rounded-xl transition-all border bg-white/80 border-[#E8E6DE]/70 text-slate-400 hover:text-slate-600 hover:bg-white hover:scale-105"
+                                      title={`${toBengaliNumber(readTime)} পৃষ্ঠা`}
+                                    >
+                                      <Layers className="w-3.5 h-3.5" />
+                                    </button>
                                   </div>
                                 </div>
+
+                                {/* Title - "মহাবিশ্বের রহস্য ও কৃষ্ণগহ্বর" */}
+                                <h4 
+                                  id={`feed-post-title-click-${post.id}`}
+                                  onClick={() => handleOpenPostReader(post)}
+                                  className="text-xl md:text-2xl font-bold font-serif text-[#3B4FE4] hover:text-[#1D4ED8] transition-colors duration-300 cursor-pointer leading-snug tracking-tight mb-3 animate-fade-in"
+                                >
+                                  {post.title}
+                                </h4>
+
+                                {/* Author and Meta Row */}
+                                <div className="flex items-center gap-2 mb-4 text-xs text-slate-500">
+                                  <img 
+                                    src={getAuthorAvatar(post.authorName, post.authorId)} 
+                                    alt={post.authorName} 
+                                    className="w-7 h-7 rounded-full object-cover shrink-0 border border-[#E8E6DE] shadow-3xs"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                  <span className="font-bold text-slate-700 hover:text-[#3B4FE4] transition-colors">
+                                    {post.authorName}
+                                  </span>
+                                  <span className="text-slate-300">•</span>
+                                  <span>{toBengaliNumber(wordsCount)} শব্দ</span>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="flex items-center gap-1 bg-[#EAE8E0]/60 px-2.5 py-1 rounded-full text-[11px] text-[#475569] font-semibold shrink-0">
+                                    <span className="text-xs">👁️</span>
+                                    <span>{toBengaliNumber(post.viewCount)} বার</span>
+                                  </span>
+                                </div>
+
+                                {/* Excerpt (Snippet) */}
+                                <p className="text-sm text-slate-600 leading-relaxed font-sans mb-6 line-clamp-2 max-w-3xl">
+                                  {post.excerpt}
+                                </p>
                               </div>
-                            </article>
+
+                              {/* Bottom row of card actions */}
+                              <div className="flex items-center justify-between gap-4 pt-3 border-t border-[#E8E6DE]/50">
+                                {/* Left side: Read Full Article link */}
+                                <button
+                                  id={`read-post-feed-${post.id}`}
+                                  onClick={() => handleOpenPostReader(post)}
+                                  className="text-xs font-extrabold text-[#3B4FE4] hover:text-[#1D4ED8] transition-all flex items-center gap-1 hover:translate-x-0.5 cursor-pointer font-serif"
+                                >
+                                  পুরো লেখা পড়ুন <span className="text-[10px] font-sans">&gt;</span>
+                                </button>
+
+                                {/* Right side: Print Add button */}
+                                {currentUser?.uid !== post.authorId && (
+                                  <button
+                                    id={`basket-post-feed-${post.id}`}
+                                    onClick={() => handleAction("basket", post.id)}
+                                    className={`py-2 px-5 rounded-full text-xs font-extrabold transition-all duration-300 flex items-center gap-2 shadow-2xs hover:shadow-xs hover:scale-102 cursor-pointer ${
+                                      isAdded 
+                                        ? "bg-sky-600 text-white hover:bg-sky-700" 
+                                        : "bg-[#009663] text-white hover:bg-[#008254]"
+                                    }`}
+                                  >
+                                    <Printer className="w-3.5 h-3.5 text-white shrink-0" />
+                                    <span>{isAdded ? "বাস্কেটে আছে" : "অ্যাড টু প্রিন্ট"}</span>
+                                  </button>
+                                )}
+                              </div>
+                            </motion.article>
                           );
                         })}
                       </div>
@@ -2068,10 +2221,21 @@ export default function App() {
                                         : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                     }`}
                                   >
-                                    ঢাকার বাইরে (৳১২০)
+                                    ঢাকার বাইরে (৳১২ো)
                                   </button>
                                 </div>
                               </div>
+
+                              <button
+                                onClick={() => {
+                                  setPdfPreviewCurrentPage(1);
+                                  setIsPdfPreviewOpen(true);
+                                }}
+                                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-indigo-700 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-indigo-200 mb-2"
+                              >
+                                <BookOpen className="w-4 h-4 text-indigo-600 animate-pulse" />
+                                ডিজিটাল বইয়ের পিডিএফ প্রিভিউ দেখুন
+                              </button>
 
                               <button
                                 onClick={() => setCheckoutStep("form")}
@@ -2153,7 +2317,7 @@ export default function App() {
                                     alert("অনুগ্রহ করে শিপিং ফর্মের সকল তথ্য সঠিক উপায়ে পূরণ করুন।");
                                     return;
                                   }
-                                  const bdPhoneRegex = /^(?:\+88|88)?(01[3-9]\d{8})$/;
+                                  const bdPhoneRegex = new RegExp("^(?:\\+88|88)?(01[3-9]\\d{8})$");
                                   if (!bdPhoneRegex.test(customerPhone.trim())) {
                                     alert("দয়া করে সঠিক ১১ ডিজিটের বাংলাদেশী মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX)।");
                                     return;
@@ -2168,139 +2332,170 @@ export default function App() {
                           </div>
                         </div>
                       ) : checkoutStep === "payment" ? (
-                        <div className="max-w-md mx-auto bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden shadow-md">
-                          {/* Operator Selection Header */}
-                          <div className="bg-slate-900 text-white p-5 text-center relative">
-                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mobile Banking Checkout Gateway</h4>
-                            <p className="text-lg font-mono font-black text-orange-400 mt-1">৳ {totalPrice.toFixed(2)} BDT</p>
-                          </div>
 
                           <div className="p-6 space-y-4">
                             <label className="block text-[11px] font-bold text-slate-500 text-center">অনুগ্রহ করে আপনার পেমেন্ট গেটওয়ে বেছে নিন:</label>
                             
-                            <div className="grid grid-cols-3 gap-2">
-                              {["bKash", "Nagad", "Rocket"].map((op) => (
+                            <div className="grid grid-cols-4 gap-1.5">
+                              {["bKash", "Nagad", "Rocket", "COD"].map((op) => (
                                 <button
                                   key={op}
                                   onClick={() => {
+                                    setSelectedPaymentMethod(op as any);
                                     setIsOtpSent(false);
                                     setCheckoutOtp("");
                                     setCheckoutPin("");
                                   }}
-                                  className={`py-2 px-1 text-xs font-black rounded-xl border text-center transition-all cursor-pointer ${
+                                  className={`py-2 px-1 text-[10px] font-black rounded-xl border text-center transition-all cursor-pointer ${
+                                    selectedPaymentMethod === op ? "ring-2 ring-orange-500 border-orange-500 bg-orange-50/25" : ""
+                                  } ${
                                     op === "bKash" ? "hover:bg-pink-50 hover:border-pink-500 text-pink-700 bg-white border-slate-200" :
                                     op === "Nagad" ? "hover:bg-orange-50 hover:border-orange-500 text-orange-700 bg-white border-slate-200" :
-                                    "hover:bg-purple-50 hover:border-purple-500 text-purple-700 bg-white border-slate-200"
+                                    op === "Rocket" ? "hover:bg-purple-50 hover:border-purple-500 text-purple-700 bg-white border-slate-200" :
+                                    "hover:bg-emerald-50 hover:border-emerald-500 text-emerald-700 bg-white border-slate-200"
                                   }`}
                                 >
-                                  {op === "bKash" ? "bkash" : op === "Nagad" ? "nagad" : "rocket"}
+                                  {op === "bKash" ? "বিকাশ" : op === "Nagad" ? "নগদ" : op === "Rocket" ? "রকেট" : "ক্যাশ অন"}
                                 </button>
                               ))}
                             </div>
 
                             <div className="h-px bg-slate-200 my-2" />
 
-                            <div className="space-y-3 text-xs font-mono">
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-500 mb-1">মার্চেন্ট ওয়ালেট নাম্বার:</label>
-                                <input 
-                                  type="text"
-                                  disabled
-                                  value="01847110992 (Read-To-Print Merchant)"
-                                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 font-bold"
-                                />
-                              </div>
+                            {selectedPaymentMethod === "COD" ? (
+                              <div className="space-y-4">
+                                <div className="bg-emerald-50 text-emerald-800 text-xs p-4 rounded-xl border border-emerald-200 leading-normal space-y-1">
+                                  <p className="font-bold flex items-center gap-1">💵 ক্যাশ অন ডেলিভারি (Cash on Delivery)</p>
+                                  <p>অর্ডারটি সফলভাবে সাবমিট হওয়ার পর আমাদের রিড-টু-প্রিন্ট টিম বইটি প্রিন্ট করে ডেলিভারি করবে। পণ্য বুঝে পেয়ে ডেলিভারি ম্যানের কাছে মূল্য পরিশোধ করবেন।</p>
+                                </div>
 
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-500 mb-1">আপনার পেমেন্ট মোবাইল নাম্বার:</label>
-                                <input 
-                                  type="tel"
-                                  value={customerPhone}
-                                  onChange={(e) => setCustomerPhone(e.target.value)}
-                                  placeholder="01XXXXXXXXX"
-                                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold"
-                                />
-                              </div>
-
-                              {!isOtpSent ? (
                                 <button
-                                  onClick={() => {
-                                    if (!customerPhone || customerPhone.length < 10) {
-                                      alert("অনুগ্রহ করে আপনার সঠিক ওয়ালেট মোবাইল নাম্বার দিন।");
-                                      return;
-                                    }
-                                    setIsOtpSent(true);
-                                    alert("সফলতা! একটি ডেমো ওটিপি কোড (১২৩৪) আপনার মোবাইলে পাঠানো হয়েছে।");
+                                  onClick={async () => {
+                                    setCheckoutStep("processing");
+                                    setPrintProgress(0);
+
+                                    let prog = 0;
+                                    const interval = setInterval(async () => {
+                                      prog += 20;
+                                      setPrintProgress(Math.min(100, prog));
+                                      if (prog >= 100) {
+                                        clearInterval(interval);
+                                        await handlePlaceOrder();
+                                      }
+                                    }, 300);
                                   }}
-                                  className="w-full py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5"
                                 >
-                                  OTP কোড পাঠান
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  অর্ডার নিশ্চিত করুন (ক্যাশ অন ডেলিভারি)
                                 </button>
-                              ) : (
-                                <>
-                                  <div className="bg-amber-50 text-amber-800 text-[10px] p-2.5 rounded-xl border border-amber-200 leading-normal">
-                                    <p className="font-bold">✓ ওটিপি কোড পাঠানো হয়েছে!</p>
-                                    <p>ডেমো পারপাসে ওটিপি হিসেবে <b>১২৩৪</b> কোডটি ব্যবহার করুন।</p>
-                                  </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-3 text-xs font-mono">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 mb-1">মার্চেন্ট ওয়ালেট নাম্বার:</label>
+                                  <input 
+                                    type="text"
+                                    disabled
+                                    value={
+                                      selectedPaymentMethod === "bKash" ? "01847110992 (bKash Merchant)" :
+                                      selectedPaymentMethod === "Nagad" ? "01847110992 (Nagad Merchant)" :
+                                      "01847110992 (Rocket Merchant)"
+                                    }
+                                    className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 font-bold"
+                                  />
+                                </div>
 
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">৪-ডিজিট ওটিপি কোড (OTP Verification):</label>
-                                    <input 
-                                      type="text"
-                                      maxLength={4}
-                                      value={checkoutOtp}
-                                      onChange={(e) => setCheckoutOtp(e.target.value)}
-                                      placeholder="যেমন: ১২৩৪"
-                                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs tracking-widest text-center font-bold"
-                                    />
-                                  </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 mb-1">আপনার পেমেন্ট মোবাইল নাম্বার:</label>
+                                  <input 
+                                    type="tel"
+                                    value={customerPhone}
+                                    onChange={(e) => setCustomerPhone(e.target.value)}
+                                    placeholder="01XXXXXXXXX"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold"
+                                  />
+                                </div>
 
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">৪-ডিজিট ওয়ালেট সিক্রেট পিন (Wallet PIN):</label>
-                                    <input 
-                                      type="password"
-                                      maxLength={4}
-                                      value={checkoutPin}
-                                      onChange={(e) => setCheckoutPin(e.target.value)}
-                                      placeholder="••••"
-                                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs tracking-widest text-center font-bold"
-                                    />
-                                  </div>
-
+                                {!isOtpSent ? (
                                   <button
-                                    onClick={async () => {
-                                      if (checkoutOtp !== "1234") {
-                                        alert("ভুল ওটিপি! ডেমো ওটিপি হিসেবে '১২৩৪' প্রবেশ করান।");
+                                    onClick={() => {
+                                      if (!customerPhone || customerPhone.length < 10) {
+                                        alert("অনুগ্রহ করে আপনার সঠিক ওয়ালেট মোবাইল নাম্বার দিন।");
                                         return;
                                       }
-                                      if (!checkoutPin || checkoutPin.length < 4) {
-                                        alert("অনুগ্রহ করে ৪ ডিজিটের পিন নাম্বারটি পূরণ করুন।");
-                                        return;
-                                      }
-
-                                      setCheckoutStep("processing");
-                                      setPrintProgress(0);
-
-                                      let prog = 0;
-                                      const interval = setInterval(async () => {
-                                        prog += 20;
-                                        setPrintProgress(Math.min(100, prog));
-                                        if (prog >= 100) {
-                                          clearInterval(interval);
-                                          await handlePlaceOrder();
-                                        }
-                                      }, 300);
+                                      setIsOtpSent(true);
+                                      alert("সফলতা! একটি ডেমো ওটিপি কোড (১২৩৪) আপনার মোবাইলে পাঠানো হয়েছে।");
                                     }}
-                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                    className="w-full py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                                   >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                    পেমেন্ট সম্পন্ন ও অর্ডার নিশ্চিত করুন
+                                    OTP কোড পাঠান
                                   </button>
-                                </>
-                              )}
-                            </div>
+                                ) : (
+                                  <>
+                                    <div className="bg-amber-50 text-amber-800 text-[10px] p-2.5 rounded-xl border border-amber-200 leading-normal">
+                                      <p className="font-bold">✓ ওটিপি কোড পাঠানো হয়েছে!</p>
+                                      <p>ডেমো পারপাসে ওটিপি হিসেবে <b>১২৩৪</b> কোডটি ব্যবহার করুন।</p>
+                                    </div>
+
+                                    <div>
+                                      <label className="block text-[10px] font-bold text-slate-500 mb-1">৪-ডিজিট ওটিপি কোড (OTP Verification):</label>
+                                      <input 
+                                        type="text"
+                                        maxLength={4}
+                                        value={checkoutOtp}
+                                        onChange={(e) => setCheckoutOtp(e.target.value)}
+                                        placeholder="যেমন: ১২৩৪"
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs tracking-widest text-center font-bold"
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <label className="block text-[10px] font-bold text-slate-500 mb-1">৪-ডিজিট ওয়ালেট সিক্রেট পিন (Wallet PIN):</label>
+                                      <input 
+                                        type="password"
+                                        maxLength={4}
+                                        value={checkoutPin}
+                                        onChange={(e) => setCheckoutPin(e.target.value)}
+                                        placeholder="••••"
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs tracking-widest text-center font-bold"
+                                      />
+                                    </div>
+
+                                    <button
+                                      onClick={async () => {
+                                        if (checkoutOtp !== "1234") {
+                                          alert("ভুল ওটিপি! ডেমো ওটিপি হিসেবে '১২৩৪' প্রবেশ করান।");
+                                          return;
+                                        }
+                                        if (!checkoutPin || checkoutPin.length < 4) {
+                                          alert("অনুগ্রহ করে ৪ ডিজিটের পিন নাম্বারটি পূরণ করুন।");
+                                          return;
+                                        }
+
+                                        setCheckoutStep("processing");
+                                        setPrintProgress(0);
+
+                                        let prog = 0;
+                                        const interval = setInterval(async () => {
+                                          prog += 20;
+                                          setPrintProgress(Math.min(100, prog));
+                                          if (prog >= 100) {
+                                            clearInterval(interval);
+                                            await handlePlaceOrder();
+                                          }
+                                        }, 300);
+                                      }}
+                                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" />
+                                      পেমেন্ট সম্পন্ন ও অর্ডার নিশ্চিত করুন
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        </div>
                       ) : checkoutStep === "processing" ? (
                         <div className="max-w-md mx-auto p-8 text-center bg-slate-900 text-slate-100 font-mono rounded-3xl shadow-lg space-y-6">
                           <div className="border border-slate-700 p-4 rounded-2xl bg-slate-950 text-left">
@@ -2686,6 +2881,18 @@ export default function App() {
           onClose={() => setSelectedPost(null)}
           onAction={handleAction}
           onEditPost={handleEditPost}
+        />
+      )}
+
+      {isPdfPreviewOpen && (
+        <PdfPreviewModal
+          isOpen={isPdfPreviewOpen}
+          onClose={() => setIsPdfPreviewOpen(false)}
+          bookTitle={bookTitle}
+          basketPosts={basketPosts}
+          totalPages={totalPages}
+          currentPage={pdfPreviewCurrentPage}
+          setCurrentPage={setPdfPreviewCurrentPage}
         />
       )}
 

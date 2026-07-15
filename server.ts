@@ -538,6 +538,14 @@ app.get("/api/transactions/:uid", (req, res) => {
   res.json(txs);
 });
 
+// Get orders for user
+app.get("/api/orders/:uid", (req, res) => {
+  const { uid } = req.params;
+  const db = getDatabase();
+  const orders = (db.orders || []).filter((o: any) => o.userId === uid);
+  res.json(orders);
+});
+
 // Get admin and global reports
 app.get("/api/admin/data", (req, res) => {
   const db = getDatabase();

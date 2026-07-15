@@ -930,3 +930,24 @@ export async function createSettlementInFirestore(settlementData: any) {
     return null;
   }
 }
+
+// Fetch orders for a specific user from Firestore
+export async function fetchUserOrdersFromFirestore(userId: string) {
+  if (!firebaseDb) return [];
+  try {
+    const q = query(
+      collection(firebaseDb, "orders"),
+      where("userId", "==", userId)
+    );
+    const snap = await getDocs(q);
+    const orders: any[] = [];
+    snap.forEach((docSnap) => {
+      orders.push(docSnap.data());
+    });
+    return orders.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  } catch (error) {
+    console.error("Failed to fetch user orders from firestore:", error);
+    return [];
+  }
+}
+
