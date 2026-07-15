@@ -109,6 +109,8 @@ export default function App() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"bKash" | "Nagad" | "Rocket" | "COD">("bKash");
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [pdfPreviewCurrentPage, setPdfPreviewCurrentPage] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"recent" | "popular" | "prints">("recent");
 
   // Load and sync orders initially
   useEffect(() => {
@@ -788,12 +790,43 @@ export default function App() {
 
   const topAuthors = Object.values(authorMap).sort((a: any, b: any) => b.totalPrints - a.totalPrints);
 
-  const filteredPosts = posts.filter(
-    (post) =>
-      post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.authorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.excerpt.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const getPostCategory = (post: Post) => {
+    const text = (post.title + " " + post.content + " " + post.excerpt).toLowerCase();
+    if (text.includes("প্রযুক্তি") || text.includes("ডিজিটাল") || text.includes("এআই") || text.includes("কম্পিউটার") || text.includes("প্রিন্ট")) {
+      return "technology";
+    }
+    if (text.includes("সোনার তরী") || text.includes("রবীন্দ্রনাথ") || text.includes("কাব্য") || text.includes("কবিতা") || text.includes("সাহিত্য") || text.includes("কাব্যিক")) {
+      return "literature";
+    }
+    if (text.includes("ইতিহাস") || text.includes("ঐতিহ্য") || text.includes("দর্শন") || text.includes("সমাজ") || text.includes("প্রবন্ধ")) {
+      return "essay";
+    }
+    return "other";
+  };
+
+  const filteredPosts = posts
+    .filter((post) => {
+      const matchesSearch = 
+        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.authorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = selectedCategory === "all" || getPostCategory(post) === selectedCategory;
+      
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => {
+      if (sortBy === "popular") {
+        return b.viewCount - a.viewCount;
+      }
+      if (sortBy === "prints") {
+        return b.addToPrintCount - a.addToPrintCount;
+      }
+      // default: recent
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA || b.id.localeCompare(a.id);
+    });
 
   const menuItems = [
     {
@@ -1206,6 +1239,57 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* Category Filter Pills and Sort Toggle */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 mb-5 border-b border-slate-100">
+                      {/* Left: Category pills */}
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { id: "all", label: "সকল লেখা", emoji: "📚" },
+                          { id: "literature", label: "কাব্য ও সাহিত্য", emoji: "✨" },
+                          { id: "technology", label: "প্রযুক্তি ও বিবর্তন", emoji: "🔌" },
+                          { id: "essay", label: "চিন্তা ও দর্শন", emoji: "💭" },
+                          { id: "other", label: "অন্যান্য রচনা", emoji: "🖋️" },
+                        ].map((cat) => (
+                          <button
+                            key={cat.id}
+                            onClick={() => setSelectedCategory(cat.id)}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer border ${
+                              selectedCategory === cat.id
+                                ? "bg-brand-deep-teal/10 text-brand-deep-teal border-brand-deep-teal/30 shadow-2xs font-bold"
+                                : "bg-slate-50 text-slate-500 border-slate-100 hover:bg-slate-100 hover:text-slate-700"
+                            }`}
+                          >
+                            <span>{cat.emoji}</span>
+                            <span>{cat.label}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Right: Sort controls */}
+                      <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+                        <span className="text-[11px] text-slate-400 font-medium">সাজান:</span>
+                        <div className="bg-slate-100/80 p-0.5 rounded-xl border border-slate-150 flex items-center">
+                          {[
+                            { id: "recent", label: "সর্বশেষ" },
+                            { id: "popular", label: "জনপ্রিয়" },
+                            { id: "prints", label: "বেশি মুদ্রিত" },
+                          ].map((option) => (
+                            <button
+                              key={option.id}
+                              onClick={() => setSortBy(option.id as any)}
+                              className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                                sortBy === option.id
+                                  ? "bg-white text-slate-800 shadow-3xs"
+                                  : "text-slate-500 hover:text-slate-800"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
                     {loadingPosts ? (
                       <div className="text-center py-16">
                         <div className="w-8 h-8 border-3 border-slate-300 border-t-brand-deep-teal rounded-full animate-spin mx-auto mb-2"></div>
@@ -1219,81 +1303,138 @@ export default function App() {
                         <p className="text-xs font-medium">কোনো লেখা খুঁজে পাওয়া যায়নি।</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="divide-y divide-slate-100">
                         {filteredPosts.map((post) => {
                           const isBookmarked = currentUser?.bookmarkedPostIds.includes(post.id) || false;
                           const isAdded = currentUser?.printBasketPostIds.includes(post.id) || false;
+                          const authorInitial = post.authorName ? post.authorName.charAt(0) : "✍️";
+                          
+                          // Calculate reading time
+                          const wordsCount = post.content ? post.content.trim().split(/\s+/).length : 0;
+                          const readTime = Math.max(1, Math.ceil(wordsCount / 120));
+
+                          // Let's pick a soft pastel BG for the author's circle avatar based on their name length
+                          const bgColors = [
+                            "bg-purple-50 text-purple-600",
+                            "bg-orange-50 text-orange-600",
+                            "bg-emerald-50 text-emerald-600",
+                            "bg-rose-50 text-rose-600",
+                            "bg-blue-50 text-blue-600",
+                          ];
+                          const bgIndex = post.authorName ? post.authorName.length % bgColors.length : 0;
+                          const avatarStyle = bgColors[bgIndex];
+
+                          // Helper function for beautiful Bengali dates inside component
+                          const formatBengaliDate = (isoString: string) => {
+                            if (!isoString) return "সম্প্রতি";
+                            try {
+                              const date = new Date(isoString);
+                              const months = [
+                                "জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন",
+                                "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"
+                              ];
+                              const numbersBengali = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
+                              const toBengaliNumber = (num: number) => num.toString().split("").map(digit => numbersBengali[parseInt(digit)] || digit).join("");
+                              
+                              const day = toBengaliNumber(date.getDate());
+                              const month = months[date.getMonth()];
+                              const year = toBengaliNumber(date.getFullYear());
+                              return `${day} ${month}, ${year}`;
+                            } catch {
+                              return "কিছুক্ষণ আগে";
+                            }
+                          };
 
                           return (
-                            <div 
+                            <article 
                               key={post.id}
-                              className="bg-white p-5 rounded-2xl border border-slate-150 hover:border-brand-soft-teal shadow-3xs hover:shadow-md transition-all duration-300 flex flex-col justify-between"
+                              className="py-6 first:pt-2 last:pb-2 group transition-all duration-300"
                             >
-                              <div>
-                                <div className="flex items-center justify-between gap-2 mb-3">
-                                  <span className="text-[10px] bg-brand-soft-teal/10 font-sans font-bold text-brand-deep-teal px-2 py-0.5 rounded-full">
-                                    ✍️ {post.authorName}
-                                  </span>
+                              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  {/* Author and Date metadata */}
+                                  <div className="flex items-center gap-2 mb-3 text-xs text-slate-400">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] uppercase shrink-0 ${avatarStyle}`}>
+                                      {authorInitial}
+                                    </div>
+                                    <span className="font-bold text-slate-600 hover:text-brand-deep-teal transition-colors">
+                                      {post.authorName}
+                                    </span>
+                                    <span className="text-slate-300">•</span>
+                                    <span>{formatBengaliDate(post.createdAt)}</span>
+                                    <span className="text-slate-300">•</span>
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                      {readTime} মিনিট পড়া
+                                    </span>
+                                  </div>
+
+                                  {/* Title & Excerpt */}
+                                  <h4 
+                                    id={`feed-post-title-click-${post.id}`}
+                                    onClick={() => handleOpenPostReader(post)}
+                                    className="text-lg md:text-xl font-bold font-serif text-slate-800 group-hover:text-brand-amber transition-colors cursor-pointer leading-snug mb-2"
+                                  >
+                                    {post.title}
+                                  </h4>
+                                  <p className="text-xs md:text-sm text-slate-500 leading-relaxed font-sans mb-4 line-clamp-2 max-w-2xl">
+                                    {post.excerpt}
+                                  </p>
+
+                                  {/* Bottom info stats bar */}
+                                  <div className="flex items-center gap-4 text-[11px] text-slate-400 font-mono">
+                                    <span className="flex items-center gap-1">👁️ {post.viewCount} ভিউ</span>
+                                    <span className="flex items-center gap-1 text-brand-amber font-bold">🖨️ {post.addToPrintCount} বার বাস্কেটে যুক্ত</span>
+                                  </div>
+                                </div>
+
+                                {/* Actions area */}
+                                <div className="flex md:flex-col items-center md:items-end justify-between md:justify-start gap-3 shrink-0 self-stretch md:self-auto pt-2 md:pt-0 border-t md:border-0 border-slate-50">
+                                  {/* Bookmark Button */}
                                   {currentUser && (
                                     <button
                                       id={`toggle-bookmark-feed-${post.id}`}
                                       onClick={() => handleAction("bookmark", post.id)}
-                                      className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                      className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                                         isBookmarked 
-                                          ? "bg-brand-soft-teal/15 border-brand-soft-teal/40 text-brand-deep-teal" 
-                                          : "bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600"
+                                          ? "bg-brand-soft-teal/15 border-brand-soft-teal/30 text-brand-deep-teal" 
+                                          : "bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
                                       }`}
+                                      title={isBookmarked ? "বুকমার্ক থেকে সরান" : "বুকমার্ক করুন"}
                                     >
-                                      <BookMarked className="w-3.5 h-3.5 fill-current" />
+                                      <BookMarked className={`w-4 h-4 ${isBookmarked ? "fill-current text-brand-deep-teal" : ""}`} />
                                     </button>
                                   )}
-                                </div>
 
-                                <h4 
-                                  id={`feed-post-title-click-${post.id}`}
-                                  onClick={() => handleOpenPostReader(post)}
-                                  className="text-base md:text-lg font-bold font-serif text-slate-800 hover:text-brand-amber transition-colors cursor-pointer leading-snug mb-1.5"
-                                >
-                                  {post.title}
-                                </h4>
-                                <p className="text-xs text-slate-500 leading-relaxed font-sans mb-3 line-clamp-2">
-                                  {post.excerpt}
-                                </p>
-                              </div>
-
-                              <div className="pt-3 border-t border-slate-150 flex items-center justify-between flex-wrap gap-2">
-                                <div className="flex gap-4 text-[10px] text-slate-400 font-mono font-medium">
-                                  <span className="flex items-center gap-1">👁️ {post.viewCount} ভিউ</span>
-                                  <span className="flex items-center gap-1 text-brand-amber font-bold">🖨️ {post.addToPrintCount} প্রিন্টস</span>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    id={`read-post-feed-${post.id}`}
-                                    onClick={() => handleOpenPostReader(post)}
-                                    className="py-1.5 px-3 hover:bg-brand-soft-teal/10 text-brand-deep-teal border border-slate-200 hover:border-brand-soft-teal/40 rounded-lg text-xs font-semibold transition-all cursor-pointer"
-                                  >
-                                    পড়ুন
-                                  </button>
-
-                                  {currentUser?.uid !== post.authorId && (
+                                  {/* Read & Add to Basket Button */}
+                                  <div className="flex items-center gap-2">
                                     <button
-                                      id={`basket-post-feed-${post.id}`}
-                                      onClick={() => handleAction("basket", post.id)}
-                                      className={`py-1.5 px-3.5 rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer flex items-center gap-1 ${
-                                        isAdded 
-                                          ? "bg-brand-deep-teal text-white" 
-                                          : "bg-brand-amber hover:bg-brand-amber/90 text-white"
-                                      }`}
+                                      id={`read-post-feed-${post.id}`}
+                                      onClick={() => handleOpenPostReader(post)}
+                                      className="py-1.5 px-3.5 hover:bg-brand-soft-teal/10 text-brand-deep-teal border border-slate-200 hover:border-brand-soft-teal/40 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-3xs"
                                     >
-                                      <Printer className="w-3.5 h-3.5" />
-                                      {isAdded ? "প্রিন্টেড" : "অ্যাড টু প্রিন্ট"}
-                                      <span className="font-mono text-[10px] opacity-85">({post.priceCoins} CC)</span>
+                                      পড়ুন
                                     </button>
-                                  )}
+
+                                    {currentUser?.uid !== post.authorId && (
+                                      <button
+                                        id={`basket-post-feed-${post.id}`}
+                                        onClick={() => handleAction("basket", post.id)}
+                                        className={`py-1.5 px-4 rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer flex items-center gap-1.5 ${
+                                          isAdded 
+                                            ? "bg-brand-deep-teal text-white hover:bg-brand-deep-teal/95" 
+                                            : "bg-brand-amber hover:bg-brand-amber/90 text-white"
+                                        }`}
+                                      >
+                                        <Printer className="w-3.5 h-3.5" />
+                                        <span>{isAdded ? "বাস্কেটে আছে" : "বাস্কেটে যুক্ত করুন"}</span>
+                                        <span className="font-mono text-[10px] opacity-90 font-normal">({post.priceCoins} CC)</span>
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
+                            </article>
                           );
                         })}
                       </div>
