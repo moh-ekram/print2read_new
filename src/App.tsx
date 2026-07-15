@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { UserProfile, Post, CoinTransaction, UserRole, Order } from "./types";
 import AuthModal from "./components/AuthModal";
@@ -146,6 +146,20 @@ export default function App() {
   const [sample2Content, setSample2Content] = useState("");
   const [selectedAuthorForView, setSelectedAuthorForView] = useState<any | null>(null);
   const [authorSearchQuery, setAuthorSearchQuery] = useState("");
+
+  const [isBasketBouncing, setIsBasketBouncing] = useState(false);
+  const prevBasketCount = useRef(currentUser?.printBasketPostIds?.length || 0);
+
+  useEffect(() => {
+    const currentCount = currentUser?.printBasketPostIds?.length || 0;
+    if (currentCount > prevBasketCount.current) {
+      setIsBasketBouncing(true);
+      const timer = setTimeout(() => setIsBasketBouncing(false), 800);
+      prevBasketCount.current = currentCount;
+      return () => clearTimeout(timer);
+    }
+    prevBasketCount.current = currentCount;
+  }, [currentUser?.printBasketPostIds?.length]);
 
   const handleGoToAuthorProfile = (authorId: string, authorName: string) => {
     const authorUser = (adminData.users || []).find((u: any) => u.uid === authorId) || {
@@ -1085,9 +1099,27 @@ export default function App() {
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <IconComponent className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
-                          isActive ? item.activeText : "text-slate-400"
-                        }`} />
+                        {item.id === "basket" && isBasketBouncing ? (
+                          <motion.div
+                            animate={{
+                              y: [0, -10, 0, -4, 0],
+                              scale: [1, 1.25, 0.9, 1.1, 1]
+                            }}
+                            transition={{
+                              duration: 0.6,
+                              ease: "easeInOut"
+                            }}
+                            className="shrink-0"
+                          >
+                            <IconComponent className={`w-5 h-5 transition-transform ${
+                              isActive ? item.activeText : "text-slate-400"
+                            }`} />
+                          </motion.div>
+                        ) : (
+                          <IconComponent className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
+                            isActive ? item.activeText : "text-slate-400"
+                          }`} />
+                        )}
                         <div className="min-w-0">
                           <p className={`text-xs font-bold leading-none ${isActive ? item.activeText : "text-slate-700"}`}>
                             {item.label}
@@ -1264,7 +1296,23 @@ export default function App() {
                         : "bg-slate-50 text-slate-500 border-slate-150 hover:bg-slate-100"
                     }`}
                   >
-                    <IconComponent className="w-3.5 h-3.5" />
+                    {item.id === "basket" && isBasketBouncing ? (
+                      <motion.div
+                        animate={{
+                          y: [0, -8, 0, -3, 0],
+                          scale: [1, 1.25, 0.9, 1.1, 1]
+                        }}
+                        transition={{
+                          duration: 0.6,
+                          ease: "easeInOut"
+                        }}
+                        className="shrink-0"
+                      >
+                        <IconComponent className="w-3.5 h-3.5" />
+                      </motion.div>
+                    ) : (
+                      <IconComponent className="w-3.5 h-3.5" />
+                    )}
                     <span>{item.label}</span>
                     {item.badge !== undefined && item.badge > 0 && (
                       <span className="ml-1 bg-orange-500 text-white text-[9px] px-1 rounded-full font-mono font-bold">
