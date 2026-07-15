@@ -145,6 +145,7 @@ export default function App() {
   const [sample2Title, setSample2Title] = useState("");
   const [sample2Content, setSample2Content] = useState("");
   const [selectedAuthorForView, setSelectedAuthorForView] = useState<any | null>(null);
+  const [isIconOnly, setIsIconOnly] = useState(true);
   const [authorSearchQuery, setAuthorSearchQuery] = useState("");
 
   const [isBasketBouncing, setIsBasketBouncing] = useState(false);
@@ -1047,17 +1048,19 @@ export default function App() {
       {/* Main Flex Layout with Left Sidebar */}
       <div className="flex-1 flex flex-row min-h-0 relative">
         {/* Left Sidebar navigation */}
-        <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between py-6 sticky top-0 h-screen shrink-0 hidden md:flex z-30 shadow-xs">
-          <div className="flex flex-col gap-6 px-4">
+        <aside className={`${isIconOnly ? "w-20 px-2" : "w-64 px-4"} bg-white border-r border-slate-200 flex flex-col justify-between py-6 sticky top-0 h-screen shrink-0 hidden md:flex z-30 shadow-xs transition-all duration-300`}>
+          <div className="flex flex-col gap-6">
             {/* Header / Logo */}
-            <div className="flex items-center gap-3 px-2">
+            <div className={`flex items-center gap-3 ${isIconOnly ? "justify-center" : "px-2"}`}>
               <div className="bg-gradient-to-tr from-brand-deep-teal to-brand-soft-teal text-white p-2.5 rounded-2xl shadow-sm shrink-0">
                 <Printer className="w-5 h-5 animate-pulse" />
               </div>
-              <div className="min-w-0">
-                <h1 className="text-sm font-serif font-bold text-slate-800 leading-none">Read-to-Print</h1>
-                <p className="text-[10px] text-slate-400 font-medium tracking-wide mt-1.5">মুদ্রণযোগ্য সাহিত্য হাব</p>
-              </div>
+              {!isIconOnly && (
+                <div className="min-w-0">
+                  <h1 className="text-sm font-serif font-bold text-slate-800 leading-none">Read-to-Print</h1>
+                  <p className="text-[10px] text-slate-400 font-medium tracking-wide mt-1.5">মুদ্রণযোগ্য সাহিত্য হাব</p>
+                </div>
+              )}
             </div>
 
             {/* Nav Items */}
@@ -1092,7 +1095,8 @@ export default function App() {
                           setSelectedAuthorForView(null); // Reset when navigating
                         }
                       }}
-                      className={`w-full text-left p-3 rounded-2xl transition-all cursor-pointer flex items-center justify-between group border border-transparent ${
+                      title={`${item.label} - ${item.desc}`}
+                      className={`relative w-full ${isIconOnly ? "p-3 justify-center" : "p-3 justify-between"} rounded-2xl transition-all cursor-pointer flex items-center group border border-transparent ${
                         isActive
                           ? item.bgColor
                           : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
@@ -1120,21 +1124,36 @@ export default function App() {
                             isActive ? item.activeText : "text-slate-400"
                           }`} />
                         )}
-                        <div className="min-w-0">
-                          <p className={`text-xs font-bold leading-none ${isActive ? item.activeText : "text-slate-700"}`}>
-                            {item.label}
-                          </p>
-                        </div>
+                        {!isIconOnly && (
+                          <div className="min-w-0">
+                            <p className={`text-xs font-bold leading-none ${isActive ? item.activeText : "text-slate-700"}`}>
+                              {item.label}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      {/* Badge */}
-                      {item.badge !== undefined && item.badge > 0 && (
+                      
+                      {/* Badge (normal sidebar view) */}
+                      {!isIconOnly && item.badge !== undefined && item.badge > 0 && (
                         <span className="text-[9px] bg-orange-500 text-white font-bold font-mono px-2 py-0.5 rounded-full">
                           {item.badge}
                         </span>
                       )}
-                      {item.badgeText !== undefined && (
+                      {!isIconOnly && item.badgeText !== undefined && (
                         <span className="text-[9px] bg-amber-100 text-amber-800 font-bold font-mono px-1.5 py-0.5 rounded-md">
                           {item.badgeText}
+                        </span>
+                      )}
+
+                      {/* Overlapping Badge for Icon Only view */}
+                      {isIconOnly && item.badge !== undefined && item.badge > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-[8px] font-bold font-mono flex items-center justify-center rounded-full animate-bounce">
+                          {item.badge}
+                        </span>
+                      )}
+                      {isIconOnly && item.badgeText !== undefined && (
+                        <span className="absolute -top-1 -right-1 px-1 bg-amber-500 text-white text-[7px] font-bold font-mono flex items-center justify-center rounded-sm">
+                          CC
                         </span>
                       )}
                     </button>
@@ -1145,16 +1164,19 @@ export default function App() {
                           setActiveNavView("admin");
                           setSelectedAuthorForView(null);
                         }}
-                        className={`w-full text-left p-3 rounded-2xl transition-all cursor-pointer flex items-center gap-3 border border-transparent ${
+                        title="অ্যাডমিন প্যানেল"
+                        className={`w-full ${isIconOnly ? "p-3 justify-center" : "p-3 justify-start gap-3"} rounded-2xl transition-all cursor-pointer flex items-center border border-transparent ${
                           activeNavView === "admin"
                             ? "bg-rose-50 text-rose-700 border border-rose-100"
                             : "text-slate-500 hover:bg-slate-50 hover:text-slate-850"
                         }`}
                       >
                         <ShieldAlert className={`w-5 h-5 shrink-0 ${activeNavView === "admin" ? "text-rose-600" : "text-slate-400"}`} />
-                        <div>
-                          <p className="text-xs font-bold leading-none text-rose-700">অ্যাডমিন প্যানেল</p>
-                        </div>
+                        {!isIconOnly && (
+                          <div>
+                            <p className="text-xs font-bold leading-none text-rose-700">অ্যাডমিন প্যানেল</p>
+                          </div>
+                        )}
                       </button>
                     )}
                   </React.Fragment>
@@ -1164,36 +1186,65 @@ export default function App() {
           </div>
 
           {/* Sidebar Footer User Details */}
-          <div className="px-4">
+          <div className={`${isIconOnly ? "flex flex-col items-center gap-2" : "px-0"}`}>
             {currentUser ? (
-              <div className="bg-slate-50 border border-slate-150 p-3 rounded-2xl flex items-center justify-between gap-2 shadow-2xs">
-                <div className="min-w-0 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-xs font-serif uppercase shrink-0">
+              isIconOnly ? (
+                <div className="flex flex-col items-center gap-2 bg-slate-50 border border-slate-150 p-2 rounded-2xl shadow-3xs w-full">
+                  <div 
+                    className="w-10 h-10 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-sm font-serif uppercase cursor-pointer"
+                    title={`${currentUser.displayName} (${currentUser.role === "writer" ? "লেখক" : currentUser.role === "admin" ? "অ্যাডমিন" : "পাঠক"})`}
+                    onClick={() => setActiveNavView("profile")}
+                  >
                     {currentUser.displayName.substring(0, 1)}
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-slate-700 truncate leading-none">{currentUser.displayName}</p>
-                    <p className="text-[9px] text-slate-400 capitalize mt-1 truncate">
-                      {currentUser.role === "writer" ? "✍️ লেখক" : currentUser.role === "admin" ? "🛡️ অ্যাডমিন" : "📖 পাঠক"}
-                    </p>
-                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="p-2 hover:bg-red-50 text-red-500 hover:text-red-650 rounded-full transition-colors cursor-pointer"
+                    title="লগআউট"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-1.5 hover:bg-red-50 text-red-500 hover:text-red-650 rounded-xl transition-colors cursor-pointer shrink-0"
-                  title="লগআউট"
-                >
-                  <LogOut className="w-4.5 h-4.5" />
-                </button>
-              </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-150 p-3 rounded-2xl flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="min-w-0 flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-xs font-serif uppercase shrink-0">
+                      {currentUser.displayName.substring(0, 1)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-slate-700 truncate leading-none">{currentUser.displayName}</p>
+                      <p className="text-[9px] text-slate-400 capitalize mt-1 truncate">
+                        {currentUser.role === "writer" ? "✍️ লেখক" : currentUser.role === "admin" ? "🛡️ অ্যাডমিন" : "📖 পাঠক"}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="p-1.5 hover:bg-red-50 text-red-500 hover:text-red-650 rounded-xl transition-colors cursor-pointer shrink-0"
+                    title="লগআউট"
+                  >
+                    <LogOut className="w-4.5 h-4.5" />
+                  </button>
+                </div>
+              )
             ) : (
-              <button
-                onClick={() => setIsAuthOpen(true)}
-                className="w-full py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg transition-all cursor-pointer"
-              >
-                <LogIn className="w-4 h-4" />
-                লগইন / নিবন্ধন
-              </button>
+              isIconOnly ? (
+                <button
+                  onClick={() => setIsAuthOpen(true)}
+                  className="w-12 h-12 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-2xl flex items-center justify-center shadow-md hover:shadow-lg transition-all cursor-pointer"
+                  title="লগইন / নিবন্ধন"
+                >
+                  <LogIn className="w-5 h-5" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsAuthOpen(true)}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg transition-all cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  লগইন / নিবন্ধন
+                </button>
+              )
             )}
           </div>
         </aside>
@@ -1217,6 +1268,20 @@ export default function App() {
 
               {/* Header Right Widgets */}
               <div className="flex items-center gap-3">
+                {/* Minimalist Icon Mode Toggle */}
+                <button
+                  onClick={() => setIsIconOnly(!isIconOnly)}
+                  title={isIconOnly ? "বিস্তারিত লেখা দেখান" : "আইকন মোড চালু করুন"}
+                  className={`p-2 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all duration-300 cursor-pointer shadow-3xs hover:scale-105 border ${
+                    isIconOnly 
+                      ? "bg-indigo-50 border-indigo-150 text-indigo-600 hover:bg-indigo-100" 
+                      : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  <Sparkles className={`w-4 h-4 ${isIconOnly ? "text-amber-500 animate-pulse" : "text-slate-400"}`} />
+                  <span className="hidden sm:inline">{isIconOnly ? "আইকন মোড" : "ডিটেলস মোড"}</span>
+                </button>
+
                 {currentUser ? (
                   <div className="flex items-center gap-3 bg-slate-50 border border-slate-150 p-1 rounded-full">
                     <button
@@ -1411,39 +1476,45 @@ export default function App() {
                           <button
                             key={cat.id}
                             onClick={() => setSelectedCategory(cat.id)}
-                            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer border ${
+                            title={cat.label}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
                               selectedCategory === cat.id
-                                ? "bg-brand-deep-teal/10 text-brand-deep-teal border-brand-deep-teal/30 shadow-2xs font-bold"
+                                ? "bg-brand-deep-teal/10 text-brand-deep-teal border-brand-deep-teal/30 shadow-2xs font-bold scale-105"
                                 : "bg-slate-50 text-slate-500 border-slate-100 hover:bg-slate-100 hover:text-slate-700"
                             }`}
                           >
-                            <span>{cat.emoji}</span>
-                            <span>{cat.label}</span>
+                            <span className="text-base">{cat.emoji}</span>
+                            {!isIconOnly && <span>{cat.label}</span>}
                           </button>
                         ))}
                       </div>
 
                       {/* Right: Sort controls */}
                       <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
-                        <span className="text-[11px] text-slate-400 font-medium">সাজান:</span>
-                        <div className="bg-slate-100/80 p-0.5 rounded-xl border border-slate-150 flex items-center">
+                        {!isIconOnly && <span className="text-[11px] text-slate-400 font-medium">সাজান:</span>}
+                        <div className="bg-slate-100/80 p-0.5 rounded-xl border border-slate-150 flex items-center gap-1">
                           {[
-                            { id: "recent", label: "সর্বশেষ" },
-                            { id: "popular", label: "জনপ্রিয়" },
-                            { id: "prints", label: "বেশি মুদ্রিত" },
-                          ].map((option) => (
-                            <button
-                              key={option.id}
-                              onClick={() => setSortBy(option.id as any)}
-                              className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                                sortBy === option.id
-                                  ? "bg-white text-slate-800 shadow-3xs"
-                                  : "text-slate-500 hover:text-slate-800"
-                              }`}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
+                            { id: "recent", label: "সর্বশেষ", icon: Clock },
+                            { id: "popular", label: "জনপ্রিয়", icon: TrendingUp },
+                            { id: "prints", label: "বেশি মুদ্রিত", icon: Printer },
+                          ].map((option) => {
+                            const SortIcon = option.icon;
+                            return (
+                              <button
+                                key={option.id}
+                                onClick={() => setSortBy(option.id as any)}
+                                title={option.label}
+                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                                  sortBy === option.id
+                                    ? "bg-white text-slate-800 shadow-3xs scale-105"
+                                    : "text-slate-500 hover:text-slate-850"
+                                }`}
+                              >
+                                <SortIcon className="w-3.5 h-3.5 shrink-0" />
+                                {!isIconOnly && <span>{option.label}</span>}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
@@ -1675,9 +1746,11 @@ export default function App() {
                                 <button
                                   id={`read-post-feed-${post.id}`}
                                   onClick={() => handleOpenPostReader(post)}
-                                  className="text-xs font-extrabold text-[#3B4FE4] hover:text-[#1D4ED8] transition-all flex items-center gap-1 hover:translate-x-0.5 cursor-pointer font-serif"
+                                  title="পুরো লেখা পড়ুন (Read Full Article)"
+                                  className="text-xs font-extrabold text-[#3B4FE4] hover:text-[#1D4ED8] transition-all flex items-center gap-1.5 hover:translate-x-0.5 cursor-pointer font-serif bg-slate-50 hover:bg-slate-100 p-2 rounded-xl border border-slate-200/50"
                                 >
-                                  পুরো লেখা পড়ুন <span className="text-[10px] font-sans">&gt;</span>
+                                  <BookOpen className="w-4 h-4 text-[#3B4FE4] shrink-0" />
+                                  {!isIconOnly && <span>পুরো লেখা পড়ুন</span>}
                                 </button>
 
                                 {/* Right side: Print Add button */}
@@ -1685,14 +1758,17 @@ export default function App() {
                                   <button
                                     id={`basket-post-feed-${post.id}`}
                                     onClick={() => handleAction("basket", post.id)}
-                                    className={`py-2 px-5 rounded-full text-xs font-extrabold transition-all duration-300 flex items-center gap-2 shadow-2xs hover:shadow-xs hover:scale-102 cursor-pointer ${
+                                    title={isAdded ? "বাস্কেট থেকে সরান (Remove from Basket)" : "বাস্কেটে যোগ করুন (Add to Basket)"}
+                                    className={`py-2 rounded-full font-extrabold transition-all duration-300 flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:scale-105 cursor-pointer ${
+                                      isIconOnly ? "px-3.5" : "px-5 text-xs"
+                                    } ${
                                       isAdded 
                                         ? "bg-sky-600 text-white hover:bg-sky-700" 
                                         : "bg-[#009663] text-white hover:bg-[#008254]"
                                     }`}
                                   >
-                                    <Printer className="w-3.5 h-3.5 text-white shrink-0" />
-                                    <span>{isAdded ? "বাস্কেটে আছে" : "অ্যাড টু প্রিন্ট"}</span>
+                                    <Printer className="w-4 h-4 text-white shrink-0" />
+                                    {!isIconOnly && <span>{isAdded ? "বাস্কেটে আছে" : "অ্যাড টু প্রিন্ট"}</span>}
                                   </button>
                                 )}
                               </div>
